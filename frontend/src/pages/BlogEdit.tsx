@@ -116,11 +116,16 @@ const BlogEdit: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // default save as draft
       if (id) {
-        await articleApi.update(id, { title, content });
+        await articleApi.update(id, { title, content, status: "draft" });
         navigate(`/blogs/${id}`);
       } else {
-        const created = await articleApi.create({ title, content });
+        const created = await articleApi.create({
+          title,
+          content,
+          status: "draft",
+        } as any);
         navigate(`/blogs/${created.id}`);
       }
     } catch (err) {
@@ -131,15 +136,55 @@ const BlogEdit: React.FC = () => {
     }
   };
 
+  const handlePublish = async () => {
+    setSaving(true);
+    try {
+      if (id) {
+        await articleApi.update(id, { title, content, status: "published" });
+        navigate(`/blogs/${id}`);
+      } else {
+        const created = await articleApi.create({
+          title,
+          content,
+          status: "published",
+        } as any);
+        navigate(`/blogs/${created.id}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to publish");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="mb-4">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <input
-          className="w-full border rounded p-2"
+          className="flex-1 rounded p-2 bg-gray-800 border border-gray-700 text-gray-100"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Title"
         />
+        <div className="space-x-2">
+          <button
+            className="btn"
+            onClick={handleSave}
+            disabled={saving}
+            type="button"
+          >
+            {saving ? "Saving..." : "Save Draft"}
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handlePublish}
+            disabled={saving}
+            type="button"
+          >
+            {saving ? "Publishing..." : "Publish"}
+          </button>
+        </div>
       </div>
 
       <div className="mb-4">

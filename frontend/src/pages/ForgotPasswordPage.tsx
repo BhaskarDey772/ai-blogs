@@ -15,6 +15,7 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [debugToken, setDebugToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,11 +28,13 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
         return;
       }
 
-      await authApi.forgotPassword(email);
+      const resp: any = await authApi.forgotPassword(email);
       setSuccess(true);
+      if (resp?.debugToken) setDebugToken(resp.debugToken);
+
       setTimeout(() => {
         onSuccess?.();
-      }, 3000);
+      }, 1500);
     } catch (err: any) {
       setError(
         err.response?.data?.error || err.message || "Failed to send reset email"
@@ -42,17 +45,15 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg">
+    <div className="w-full max-w-md mx-auto p-6 bg-gray-900 text-gray-100 rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold mb-6">Reset Password</h2>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
+        <div className="mb-4 p-3 bg-red-800 text-red-200 rounded">{error}</div>
       )}
 
       {success && (
-        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+        <div className="mb-4 p-3 bg-green-800 text-green-200 rounded">
           Check your email for password reset instructions
         </div>
       )}
@@ -60,7 +61,7 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
       {!success ? (
         <>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <p className="text-gray-600 text-sm mb-4">
+            <p className="text-gray-300 text-sm mb-4">
               Enter your email address and we'll send you a link to reset your
               password.
             </p>
@@ -73,7 +74,7 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
                 setEmail(e.target.value);
                 setError("");
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded bg-gray-800 border border-gray-700 text-gray-100"
             />
 
             <Button type="submit" disabled={loading} className="w-full">
@@ -83,13 +84,21 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
 
           <button
             onClick={onBack}
-            className="w-full mt-4 text-sm text-blue-500 hover:text-blue-600"
+            className="w-full mt-4 text-sm text-blue-300"
           >
             Back to Login
           </button>
         </>
       ) : (
-        <p className="text-gray-600 text-center">Redirecting...</p>
+        <div>
+          <p className="text-gray-300 text-center">Redirecting...</p>
+          {debugToken && (
+            <div className="mt-4 p-3 bg-gray-800 text-sm rounded">
+              <div className="text-yellow-300">Debug token (dev):</div>
+              <pre className="break-words text-gray-100">{debugToken}</pre>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

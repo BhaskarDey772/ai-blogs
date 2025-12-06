@@ -12,12 +12,16 @@ import BlogView from "@/pages/BlogView";
 import BlogEdit from "@/pages/BlogEdit";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import { useAuth } from "@/lib/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const ArticleList: FC = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
   const { isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -38,17 +42,8 @@ const ArticleList: FC = () => {
     fetchArticles();
   }, [isAuthenticated, isLoading]);
 
-  const handleGenerate = async () => {
-    setLoading(true);
-    try {
-      const newArticle = await articleApi.generate();
-      setArticles((prev) => [newArticle, ...prev]);
-    } catch (err) {
-      console.error("Error generating article:", err);
-      alert("Failed to generate article");
-    } finally {
-      setLoading(false);
-    }
+  const handleCreateNew = () => {
+    navigate("/blogs/new");
   };
 
   const handleDelete = async (id: string) => {
@@ -65,8 +60,8 @@ const ArticleList: FC = () => {
     <div className="w-full space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Articles</h2>
-        <Button onClick={handleGenerate} disabled={loading || !isAuthenticated}>
-          {loading ? "Generating..." : "Generate Article"}
+        <Button onClick={handleCreateNew} disabled={!isAuthenticated}>
+          Create New Blog
         </Button>
       </div>
 
