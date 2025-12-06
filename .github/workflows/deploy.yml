@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Connect to EC2 and deploy
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -21,8 +21,5 @@ jobs:
           script: |
             cd /home/ubuntu/ai-blogs
 
-            # Pull latest images
-            docker-compose pull
-
-            # Restart containers
-            docker-compose up -d
+            docker-compose -f docker-compose.ec2.yml pull
+            docker-compose -f docker-compose.ec2.yml up -d
