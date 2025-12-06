@@ -5,5 +5,4 @@
 /frontend/.env
 /frontend/dist
 
-infra/docker-compose.ec2.yml
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICPsa86KDPkBbYTLU6a5NUCtZBXpvgJqPnXPJjxs+Nqf github-actions
+/infra/docker-compose.ec2.yml
