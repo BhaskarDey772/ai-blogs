@@ -6,7 +6,7 @@ env:
     ACCOUNT_ID: 158670532160
     BACKEND_REPO: ai-blogs-backend
     FRONTEND_REPO: ai-blogs-frontend
-    VITE_API_BASE: "https://api.cozycandles.in/api" # <<---- IMPORTANT
+    VITE_API_BASE: "https://api.cozycandles.in/api"
 
 phases:
   pre_build:
@@ -15,14 +15,12 @@ phases:
       - aws --version
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      # Compose final ECR URIs
       - BACKEND_URI="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO"
       - FRONTEND_URI="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO"
 
       - echo "BACKEND_URI=$BACKEND_URI"
       - echo "FRONTEND_URI=$FRONTEND_URI"
 
-      # Tag images with commit hash
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       - echo "IMAGE_TAG=$IMAGE_TAG"
@@ -30,15 +28,17 @@ phases:
   build:
     commands:
       - echo "Building backend image..."
-      - docker build \
-        -t $BACKEND_URI:$IMAGE_TAG \
-        -f backend/Dockerfile backend
+      - |
+        docker build \
+          -t $BACKEND_URI:$IMAGE_TAG \
+          -f backend/Dockerfile backend
 
       - echo "Building frontend image with VITE_API_BASE..."
-      - docker build \
-        --build-arg VITE_API_BASE=$VITE_API_BASE \
-        -t $FRONTEND_URI:$IMAGE_TAG \
-        -f frontend/Dockerfile frontend
+      - |
+        docker build \
+          --build-arg VITE_API_BASE=$VITE_API_BASE \
+          -t $FRONTEND_URI:$IMAGE_TAG \
+          -f frontend/Dockerfile frontend
 
   post_build:
     commands:
@@ -46,12 +46,4 @@ phases:
       - docker push $BACKEND_URI:$IMAGE_TAG
       - docker push $FRONTEND_URI:$IMAGE_TAG
 
-      # Save details (optional)
-      - printf '{"backend":"%s","frontend":"%s"}' \
-        "$BACKEND_URI:$IMAGE_TAG" "$FRONTEND_URI:$IMAGE_TAG" > imageDetail.json
-      - cat imageDetail.json
-
-artifacts:
-  files:
-    - infra/docker-compose.ec2.yml
-    - imageDetail.json
+      - printf '{"backend":"%s","frontend":"%s"}' "$BACKEND_URI:$IMAGE_TAG"
