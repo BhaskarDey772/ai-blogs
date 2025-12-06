@@ -1,6 +1,10 @@
 import axios, { AxiosInstance } from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+// Prefer runtime-injected env (window._env_) so Docker/nginx can set API URL at container start.
+const runtimeEnv =
+  (typeof window !== "undefined" && (window as any)._env_) || null;
+const API_BASE =
+  runtimeEnv?.VITE_API_BASE || import.meta.env.VITE_API_BASE || "/api";
 
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE,
