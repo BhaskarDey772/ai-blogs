@@ -310,7 +310,7 @@ You may use any of these:
 
 → Easily **€0 cost**.
 
-### **Option B – OpenAI (Max ~$5)**
+### **Option B – OpenAI (Max ~$5) **
 
 You can use OpenAI models, but:
 
