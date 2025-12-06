@@ -20,5 +20,9 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/ai-blogs
-            docker compose pull
-            docker compose up -d
+
+            # Pull latest images
+            docker-compose pull
+
+            # Restart containers
+            docker-compose up -d
