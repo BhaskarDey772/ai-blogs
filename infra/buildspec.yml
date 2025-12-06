@@ -13,8 +13,7 @@ phases:
     commands:
       - echo "Logging in to Amazon ECR..."
       - aws --version
-      - aws ecr get-login-password --region $AWS_REGION \
-        | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
       # Compose final ECR URIs
       - BACKEND_URI="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO"
