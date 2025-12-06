@@ -1,0 +1,36 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPO_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/tech-test
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+
+  build:
+    commands:
+      - echo "Building backend Docker image..."
+      - docker build -t $REPO_URI-backend:$IMAGE_TAG ./backend
+      - docker tag $REPO_URI-backend:$IMAGE_TAG $REPO_URI-backend:latest
+
+      - echo "Building frontend Docker image..."
+      - docker build -t $REPO_URI-frontend:$IMAGE_TAG ./frontend
+      - docker tag $REPO_URI-frontend:$IMAGE_TAG $REPO_URI-frontend:latest
+
+  post_build:
+    commands:
+      - echo "Pushing Docker images to ECR..."
+      - docker push $REPO_URI-backend:$IMAGE_TAG
+      - docker push $REPO_URI-backend:latest
+      - docker push $REPO_URI-frontend:$IMAGE_TAG
+      - docker push $REPO_URI-frontend:latest
+
+      - echo "Writing image definitions file..."
+      - printf '[{"name":"tech-test-backend","imageUri":"%s"},{"name":"tech-test-frontend","imageUri":"%s"}]' $REPO_URI-backend:$IMAGE_TAG $REPO_URI-frontend:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - infra/docker-compose.yml

@@ -1,0 +1,50 @@
+version: "3.3"
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: tech-test-backend
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      # Use your cloud/Atlas connection string or local URI if preferred
+      MONGODB_URI: mongodb+srv://bhaskardey772:PmE6Zvyr0VA82jap@cluster0.qjtkk.mongodb.net/ai-blogs
+      PORT: 4000
+      JWT_SECRET: "change-this-secret"
+      APP_URL: http://localhost:5174
+      FRONTEND_URL: http://localhost:5174
+      RESEND_API_KEY: ""
+      FROM_EMAIL: "noreply@email.cozycandles.in"
+      OPENAI_API_KEY: ""
+
+    networks:
+      - tech-test
+    volumes:
+      - ../backend/src:/app/src
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: tech-test-frontend
+    # Frontend is built and served by nginx in the container (port 80).
+    # Map host port 5174 -> container 80 so your Vite-based dev port is available on host 5174.
+    ports:
+      - "5174:80"
+    environment:
+      # When building the frontend inside Docker we need the API URL reachable from the browser.
+      # Set to localhost:4000 so the browser (host) talks to the backend bound to host port 4000.
+      VITE_API_BASE: http://localhost:4000/api
+    depends_on:
+      - backend
+    networks:
+      - tech-test
+    restart: unless-stopped
+
+networks:
+  tech-test:
+    driver: bridge
