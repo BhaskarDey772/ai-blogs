@@ -5,7 +5,7 @@ services:
     build:
       context: ../backend
       dockerfile: Dockerfile
-    container_name: tech-test-backend
+    container_name: ai-blogs-backend
     ports:
       - "4000:4000"
     environment:
@@ -21,7 +21,7 @@ services:
       OPENAI_API_KEY: ""
 
     networks:
-      - tech-test
+      - ai-blogs
     volumes:
       - ../backend/src:/app/src
     restart: unless-stopped
@@ -30,7 +30,7 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
-    container_name: tech-test-frontend
+    container_name: ai-blogs-frontend
     # Frontend is built and served by nginx in the container (port 80).
     # Map host port 5174 -> container 80 so your Vite-based dev port is available on host 5174.
     ports:
@@ -42,9 +42,9 @@ services:
     depends_on:
       - backend
     networks:
-      - tech-test
+      - ai-blogs
     restart: unless-stopped
 
 networks:
-  tech-test:
+  ai-blogs:
     driver: bridge

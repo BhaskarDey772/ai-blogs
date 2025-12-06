@@ -1,36 +1,44 @@
 version: 0.2
 
+env:
+  variables:
+    AWS_REGION: ap-south-1 # or your region
+    ACCOUNT_ID: 123456789012 # <<< your AWS account id
+    BACKEND_REPO: 158670532160.dkr.ecr.us-east-1.amazonaws.com/ai-blogs-backend
+    FRONTEND_REPO: 158670532160.dkr.ecr.us-east-1.amazonaws.com/ai-blogs-frontend
+
 phases:
   pre_build:
     commands:
-      - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      - REPO_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/tech-test
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - BACKEND_URI="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO"
+      - FRONTEND_URI="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO"
+
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
 
   build:
     commands:
-      - echo "Building backend Docker image..."
-      - docker build -t $REPO_URI-backend:$IMAGE_TAG ./backend
-      - docker tag $REPO_URI-backend:$IMAGE_TAG $REPO_URI-backend:latest
+      - echo Building backend image...
+      - docker build -t $BACKEND_URI:$IMAGE_TAG -f backend/Dockerfile backend
 
-      - echo "Building frontend Docker image..."
-      - docker build -t $REPO_URI-frontend:$IMAGE_TAG ./frontend
-      - docker tag $REPO_URI-frontend:$IMAGE_TAG $REPO_URI-frontend:latest
+      - echo Building frontend image...
+      - docker build -t $FRONTEND_URI:$IMAGE_TAG -f frontend/Dockerfile frontend
 
   post_build:
     commands:
-      - echo "Pushing Docker images to ECR..."
-      - docker push $REPO_URI-backend:$IMAGE_TAG
-      - docker push $REPO_URI-backend:latest
-      - docker push $REPO_URI-frontend:$IMAGE_TAG
-      - docker push $REPO_URI-frontend:latest
+      - echo Pushing images to ECR...
+      - docker push $BACKEND_URI:$IMAGE_TAG
+      - docker push $FRONTEND_URI:$IMAGE_TAG
 
-      - echo "Writing image definitions file..."
-      - printf '[{"name":"tech-test-backend","imageUri":"%s"},{"name":"tech-test-frontend","imageUri":"%s"}]' $REPO_URI-backend:$IMAGE_TAG $REPO_URI-frontend:$IMAGE_TAG > imagedefinitions.json
+      # Save tag info for deployment
+      - printf '{"backend":"%s","frontend":"%s"}' "$BACKEND_URI:$IMAGE_TAG" "$FRONTEND_URI:$IMAGE_TAG" > imageDetail.json
+      - cat imageDetail.json
 
 artifacts:
   files:
-    - imagedefinitions.json
-    - infra/docker-compose.yml
+    - infra/docker-compose.ec2.yml
+    - imageDetail.json

@@ -11,7 +11,7 @@ import { authMiddleware } from "./middleware/auth";
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/tech-test";
+  process.env.MONGODB_URI || "mongodb://localhost:27017/ai-blogs";
 
 // Middleware
 app.use(express.json());

@@ -19,7 +19,7 @@ echo "Adding ubuntu user to docker group..."
 sudo usermod -aG docker ubuntu
 
 echo "Pulling latest images..."
-cd /home/ubuntu/tech-test
+cd /home/ubuntu/ai-blogs
 docker-compose pull
 
 echo "Starting services..."

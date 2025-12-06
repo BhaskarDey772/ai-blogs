@@ -6,7 +6,7 @@ set -e
 
 AWS_ACCOUNT_ID=$1
 AWS_REGION="us-east-1"
-ECR_REPO_PREFIX="tech-test"
+ECR_REPO_PREFIX="ai-blogs"
 
 if [ -z "$AWS_ACCOUNT_ID" ]; then
   echo "Usage: ./deploy.sh <AWS_ACCOUNT_ID>"
