@@ -16,6 +16,40 @@ const MONGODB_URI =
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+// Simple request logger (controls: NODE_ENV and LOG_REQUESTS)
+const shouldLogRequests =
+  process.env.LOG_REQUESTS === "true" || process.env.NODE_ENV !== "production";
+if (shouldLogRequests) {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const { method, originalUrl } = req;
+
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      const status = res.statusCode;
+      let meta = `${method} ${originalUrl} ${status} ${duration}ms`;
+
+      // In non-production show small request body summary for POST/PUT/PATCH
+      if (
+        req.body &&
+        (method === "POST" || method === "PUT" || method === "PATCH")
+      ) {
+        try {
+          const bodyStr = JSON.stringify(req.body);
+          const short =
+            bodyStr.length > 200 ? bodyStr.slice(0, 200) + "..." : bodyStr;
+          meta += ` body=${short}`;
+        } catch (e) {
+          // ignore body stringify errors
+        }
+      }
+
+      console.log(`[HTTP] ${meta}`);
+    });
+
+    next();
+  });
+}
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",

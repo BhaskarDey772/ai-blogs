@@ -3,12 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-interface LoginPageProps {
-  onSuccess?: () => void;
-  onForgotPassword?: () => void;
-}
-
-const LoginPage: FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) => {
+const LoginPage: FC = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -83,7 +78,7 @@ const LoginPage: FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) => {
       </form>
 
       <button
-        onClick={onForgotPassword}
+        onClick={() => navigate("/forgot-password")}
         className="w-full mt-4 text-sm text-blue-500 hover:text-blue-600"
       >
         Forgot Password?

@@ -48,7 +48,7 @@ export class EmailService {
     }
 
     try {
-      await client.emails.send({
+      const resp = await client.emails.send({
         from: FROM_EMAIL,
         to: email,
         subject: "Reset Your Password",
@@ -66,8 +66,22 @@ export class EmailService {
           </div>
         `,
       });
+      console.log(
+        "Password reset email sent to:",
+        email,
+        "resend_response:",
+        resp
+      );
     } catch (err) {
-      console.error("Failed to send password reset email:", err);
+      // Log detailed error shape so we can inspect API errors from Resend
+      try {
+        console.error(
+          "Failed to send password reset email:",
+          JSON.stringify(err)
+        );
+      } catch (e) {
+        console.error("Failed to send password reset email:", err);
+      }
       // Don't throw - let the caller decide; surface warning instead
       return;
     }
@@ -85,7 +99,7 @@ export class EmailService {
     }
 
     try {
-      await client.emails.send({
+      const resp = await client.emails.send({
         from: FROM_EMAIL,
         to: email,
         subject: "Welcome to Auto-Generated Blog",
@@ -102,8 +116,13 @@ export class EmailService {
           </div>
         `,
       });
+      console.log("Welcome email sent to:", email, "resend_response:", resp);
     } catch (err) {
-      console.error("Failed to send welcome email:", err);
+      try {
+        console.error("Failed to send welcome email:", JSON.stringify(err));
+      } catch (e) {
+        console.error("Failed to send welcome email:", err);
+      }
       return;
     }
   }
@@ -123,7 +142,7 @@ export class EmailService {
     }
 
     try {
-      await client.emails.send({
+      const resp = await client.emails.send({
         from: FROM_EMAIL,
         to: email,
         subject: "Verify Your Email Address",
@@ -138,8 +157,21 @@ export class EmailService {
           </div>
         `,
       });
+      console.log(
+        "Verification email sent to:",
+        email,
+        "resend_response:",
+        resp
+      );
     } catch (err) {
-      console.error("Failed to send verification email:", err);
+      try {
+        console.error(
+          "Failed to send verification email:",
+          JSON.stringify(err)
+        );
+      } catch (e) {
+        console.error("Failed to send verification email:", err);
+      }
       return;
     }
   }

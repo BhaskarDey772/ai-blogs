@@ -184,6 +184,9 @@ const App: FC = () => {
               }
             />
 
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+
             <Route
               path="/blogs"
               element={

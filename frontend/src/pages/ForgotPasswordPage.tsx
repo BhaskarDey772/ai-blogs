@@ -1,21 +1,15 @@
 import React, { FC, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { authApi } from "@/api/client";
+import { useNavigate, Link } from "react-router-dom";
 
-interface ForgotPasswordPageProps {
-  onSuccess?: () => void;
-  onBack?: () => void;
-}
-
-const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
-  onSuccess,
-  onBack,
-}) => {
+const ForgotPasswordPage: FC = () => {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [debugToken, setDebugToken] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +27,9 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
       if (resp?.debugToken) setDebugToken(resp.debugToken);
 
       setTimeout(() => {
-        onSuccess?.();
+        // After sending, we keep user on this page so they can copy debug token if present.
+        // Optionally navigate to sign in after a short delay in production.
+        if (!resp?.debugToken) navigate("/signin");
       }, 1500);
     } catch (err: any) {
       setError(
@@ -82,12 +78,12 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
             </Button>
           </form>
 
-          <button
-            onClick={onBack}
-            className="w-full mt-4 text-sm text-blue-300"
+          <Link
+            to="/signin"
+            className="w-full mt-4 text-sm text-blue-300 block text-center"
           >
             Back to Login
-          </button>
+          </Link>
         </>
       ) : (
         <div>
@@ -96,6 +92,14 @@ const ForgotPasswordPage: FC<ForgotPasswordPageProps> = ({
             <div className="mt-4 p-3 bg-gray-800 text-sm rounded">
               <div className="text-yellow-300">Debug token (dev):</div>
               <pre className="break-words text-gray-100">{debugToken}</pre>
+              <div className="mt-3">
+                <Link
+                  to={`/reset-password?token=${encodeURIComponent(debugToken)}`}
+                  className="text-blue-400 underline"
+                >
+                  Open reset page with token
+                </Link>
+              </div>
             </div>
           )}
         </div>

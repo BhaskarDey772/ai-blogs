@@ -1,14 +1,11 @@
 import React, { FC, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { authApi } from "@/api/client";
 
-interface ResetPasswordPageProps {
-  onSuccess?: () => void;
-}
-
-const ResetPasswordPage: FC<ResetPasswordPageProps> = ({ onSuccess }) => {
+const ResetPasswordPage: FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [token, setToken] = useState("");
   const [formData, setFormData] = useState({
     newPassword: "",
@@ -68,8 +65,8 @@ const ResetPasswordPage: FC<ResetPasswordPageProps> = ({ onSuccess }) => {
       );
       setSuccess(true);
       setTimeout(() => {
-        onSuccess?.();
-      }, 2000);
+        navigate("/signin");
+      }, 1500);
     } catch (err: any) {
       setError(
         err.response?.data?.error || err.message || "Failed to reset password"
