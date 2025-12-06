@@ -2,8 +2,8 @@ version: 0.2
 
 env:
   variables:
-    AWS_REGION: ap-south-1 # or your region
-    ACCOUNT_ID: 123456789012 # <<< your AWS account id
+    AWS_REGION: us-east-1 # or your region
+    ACCOUNT_ID: 158670532160 # <<< your AWS account id
     BACKEND_REPO: 158670532160.dkr.ecr.us-east-1.amazonaws.com/ai-blogs-backend
     FRONTEND_REPO: 158670532160.dkr.ecr.us-east-1.amazonaws.com/ai-blogs-frontend
 
