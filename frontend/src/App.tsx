@@ -135,7 +135,7 @@ const Header: FC = () => {
     <header className="flex justify-between items-center mb-12">
       <div>
         <h1 className="text-4xl font-bold text-gray-900">
-          <Link to="/">Auto-Generated Blog</Link>
+          <Link to="/">Auto-Gen Blog</Link>
         </h1>
       </div>
       <div>
