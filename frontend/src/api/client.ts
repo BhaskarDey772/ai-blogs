@@ -17,7 +17,7 @@ const client: AxiosInstance = axios.create({
 export interface Article {
   id: string;
   title: string;
-  content: string;
+  content: string; // pure Markdown string
   status?: "draft" | "published" | "unpublished";
   authorId?: string;
   authorName?: string;
@@ -58,7 +58,8 @@ export const articleApi = {
 
   create: async (article: {
     title: string;
-    content: string;
+    content: string; // markdown
+    status?: "draft" | "published" | "unpublished";
   }): Promise<Article> => {
     const { data } = await client.post("/articles", article);
     return data;
@@ -66,7 +67,11 @@ export const articleApi = {
 
   update: async (
     id: string,
-    article: { title?: string; content?: string; status?: string }
+    article: {
+      title?: string;
+      content?: string; // markdown
+      status?: "draft" | "published" | "unpublished";
+    }
   ): Promise<Article> => {
     const { data } = await client.put(`/articles/${id}`, article);
     return data;
@@ -80,67 +85,14 @@ export const articleApi = {
   delete: async (id: string): Promise<void> => {
     await client.delete(`/articles/${id}`);
   },
-};
 
-export const authApi = {
-  signup: async (
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string
-  ): Promise<AuthResponse> => {
-    const { data } = await client.post<AuthResponse>("/auth/signup", {
-      email,
-      password,
-      firstName,
-      lastName,
-    });
-    return data;
-  },
-
-  login: async (email: string, password: string): Promise<AuthResponse> => {
-    const { data } = await client.post<AuthResponse>("/auth/login", {
-      email,
-      password,
-    });
-    return data;
-  },
-
-  forgotPassword: async (email: string): Promise<{ message: string }> => {
-    const { data } = await client.post("/auth/forgot-password", { email });
-    return data;
-  },
-
-  resetPassword: async (
-    token: string,
-    newPassword: string,
-    confirmPassword: string
-  ): Promise<AuthResponse> => {
-    const { data } = await client.post<AuthResponse>("/auth/reset-password", {
-      token,
-      newPassword,
-      confirmPassword,
-    });
-    return data;
-  },
-
-  logout: async (): Promise<{ message: string }> => {
-    const { data } = await client.post("/auth/logout");
-    return data;
-  },
-
-  getCurrentUser: async (): Promise<{ user: User }> => {
-    const { data } = await client.get("/auth/me");
-    return data;
-  },
-
-  updateProfile: async (userData: Partial<User>): Promise<AuthResponse> => {
-    const { data } = await client.patch<AuthResponse>(
-      "/auth/profile",
-      userData
-    );
+  bulkDelete: async (ids: string[]): Promise<{ deleted: number }> => {
+    const { data } = await client.post("/articles/bulk-delete", { ids });
     return data;
   },
 };
+
+// Authentication is handled by Clerk on the frontend and backend.
+// Use Clerk hooks (`useAuth`, `useUser`) directly instead of this authApi.
 
 export default client;

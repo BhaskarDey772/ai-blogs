@@ -1,73 +1,39 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { articleApi, Article } from "@/api/client";
+import NovelEditor from "@/components/NovelEditor";
+import { parseNovelContent } from "@/lib/parseNovelContent";
 
-const BlogView: React.FC = () => {
+export default function BlogView() {
   const { id } = useParams<{ id: string }>();
   const [article, setArticle] = useState<Article | null>(null);
-  const [html, setHtml] = useState<string>("");
+  const [doc, setDoc] = useState({ type: "doc", content: [] });
 
   useEffect(() => {
-    const fetch = async () => {
-      if (!id) return;
-      try {
-        const a = await articleApi.getById(id);
-        setArticle(a);
+    if (!id) return;
 
-        // render markdown to HTML using unified/remark if available
-        try {
-          const [
-            { unified },
-            remarkParse,
-            remarkRehype,
-            rehypeStringify,
-            rehypeSanitize,
-          ] = await Promise.all([
-            import("unified"),
-            import("remark-parse"),
-            import("remark-rehype"),
-            import("rehype-stringify"),
-            import("rehype-sanitize"),
-          ]);
-
-          const vfile = await (unified as any)()
-            .use((remarkParse as any).default)
-            .use((remarkRehype as any).default)
-            .use((rehypeSanitize as any).default)
-            .use((rehypeStringify as any).default)
-            .process(a.content || "");
-
-          setHtml(String(vfile));
-        } catch (e) {
-          // fallback: wrap in pre tag
-          setHtml("<pre>" + (a.content || "") + "</pre>");
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetch();
+    (async () => {
+      const a = await articleApi.getById(id);
+      setArticle(a);
+      setDoc(parseNovelContent(a.content)); // <-- FIXED
+    })();
   }, [id]);
 
-  if (!article) return <div>Loading...</div>;
+  if (!article) return <div className="text-gray-500">Loading…</div>;
 
   return (
-    <div className="prose max-w-3xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">{article.title}</h1>
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div className="flex justify-between">
+        <h1 className="text-3xl font-bold text-gray-100">{article.title}</h1>
         <Link
           to={`/blogs/${article.id}/edit`}
-          className="text-sm text-blue-600"
+          className="text-blue-400 hover:text-blue-300"
         >
           Edit
         </Link>
       </div>
-      <p className="text-sm text-gray-600 mb-4">
-        By {article.authorName || "Unknown"}
-      </p>
-      <div dangerouslySetInnerHTML={{ __html: html }} />
+
+      <NovelEditor value={doc} readOnly onChange={undefined} />
     </div>
   );
-};
-
-export default BlogView;
+}

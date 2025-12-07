@@ -1,2 +1,2 @@
 export { Article, IArticle } from "./Article";
-export { User, IUser } from "./User";
+// User model removed: authentication is handled by Clerk

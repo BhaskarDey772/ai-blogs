@@ -1,5 +1,12 @@
 import { Request, Response, NextFunction } from "express";
-import { AuthService, AuthPayload } from "../services/AuthService";
+import { requireAuth, clerkClient } from "@clerk/express";
+
+export interface AuthPayload {
+  userId: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 export interface AuthRequest extends Request {
   user?: AuthPayload;
@@ -11,21 +18,40 @@ export const authMiddleware = (
   next: NextFunction
 ): void => {
   try {
-    const token = req.cookies?.accessToken;
+    // Use Clerk server-side session verification only
+    requireAuth()(req as any, res as any, async (err?: any) => {
+      if (err) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
 
-    if (!token) {
-      res.status(401).json({ error: "No access token provided" });
-      return;
-    }
+      const auth = (req as any).auth;
+      if (!auth || !auth.userId) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
 
-    const decoded = AuthService.verifyToken(token);
-    if (!decoded) {
-      res.status(401).json({ error: "Invalid or expired token" });
-      return;
-    }
+      // Try to enrich with Clerk user data when possible
+      try {
+        const clerkUser = await clerkClient.users.getUser(auth.userId);
+        const primaryEmail =
+          clerkUser.emailAddresses.find(
+            (e) => e.id === clerkUser.primaryEmailAddressId
+          )?.emailAddress || clerkUser.emailAddresses[0]?.emailAddress;
 
-    req.user = decoded;
-    next();
+        req.user = {
+          userId: auth.userId,
+          email: primaryEmail,
+          firstName: clerkUser.firstName || undefined,
+          lastName: clerkUser.lastName || undefined,
+        } as AuthPayload;
+      } catch (e) {
+        // If clerkClient not configured or lookup fails, at least provide userId
+        req.user = { userId: auth.userId } as AuthPayload;
+      }
+
+      next();
+    });
   } catch (err) {
     res.status(401).json({ error: "Authentication failed" });
   }
@@ -37,16 +63,31 @@ export const optionalAuth = (
   next: NextFunction
 ): void => {
   try {
-    const token = req.cookies?.accessToken;
+    // Optional: try Clerk, but never fail the request if unauthenticated
+    requireAuth()(req as any, res as any, async (err?: any) => {
+      if (!err) {
+        const auth = (req as any).auth;
+        if (auth && auth.userId) {
+          try {
+            const clerkUser = await clerkClient.users.getUser(auth.userId);
+            const primaryEmail =
+              clerkUser.emailAddresses.find(
+                (e) => e.id === clerkUser.primaryEmailAddressId
+              )?.emailAddress || clerkUser.emailAddresses[0]?.emailAddress;
 
-    if (token) {
-      const decoded = AuthService.verifyToken(token);
-      if (decoded) {
-        req.user = decoded;
+            req.user = {
+              userId: auth.userId,
+              email: primaryEmail,
+              firstName: clerkUser.firstName || undefined,
+              lastName: clerkUser.lastName || undefined,
+            } as AuthPayload;
+          } catch (e) {
+            req.user = { userId: auth.userId } as AuthPayload;
+          }
+        }
       }
-    }
-
-    next();
+      next();
+    });
   } catch (err) {
     next();
   }

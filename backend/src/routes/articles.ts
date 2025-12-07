@@ -4,123 +4,153 @@ import { authMiddleware, AuthRequest, optionalAuth } from "../middleware/auth";
 
 const router = Router();
 
-// Public: get published articles
+/* -------------------------------------------------------
+   PUBLIC: Fetch published articles
+------------------------------------------------------- */
 router.get("/public", async (req, res) => {
   try {
     const articles = await ArticleService.getPublishedArticles();
-    res.json(articles);
+    return res.json(articles);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch public articles" });
+    return res.status(500).json({ error: "Failed to fetch public articles" });
   }
 });
 
-// Public or authenticated: view single article (if draft, only author can view)
+/* -------------------------------------------------------
+   PUBLIC OR AUTH: Get single article
+   - Published → everyone
+   - Draft/unpublished → only author
+------------------------------------------------------- */
 router.get("/:id", optionalAuth, async (req: AuthRequest, res) => {
   try {
-    const article = await ArticleService.getArticleById(req.params.id);
-    if (!article) return res.status(404).json({ error: "Article not found" });
+    const requesterId = req.user?.userId;
+    const article = await ArticleService.getArticleByIdExpanded(
+      req.params.id,
+      requesterId
+    );
 
-    if (article.status !== "published") {
-      // If not published, only author can view
-      const requesterId = req.user?.userId;
-      if (!requesterId || requesterId !== article.authorId) {
-        return res
-          .status(403)
-          .json({ error: "Not authorized to view this article" });
-      }
-    }
-
-    res.json(article);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch article" });
+    if (!article) return res.status(404).json({ error: "Not found" });
+    return res.json(article);
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ error: err.message || "Failed to fetch article" });
   }
 });
 
-// Authenticated: get user's articles + public ones
+/* -------------------------------------------------------
+   AUTH: Get all articles visible to the user
+   - Own drafts/unpublished
+   - All published articles
+------------------------------------------------------- */
 router.get("/", optionalAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.userId;
-    if (userId) {
-      const userArticles = await ArticleService.getArticlesForUser(userId);
-      const publicArticles = await ArticleService.getPublishedArticles();
-      // Merge: user's articles first, then public articles not authored by user
-      const publicExcludingUser = publicArticles.filter(
-        (a) => a.authorId !== userId
-      );
-      res.json([...userArticles, ...publicExcludingUser]);
-    } else {
-      const publicArticles = await ArticleService.getPublishedArticles();
-      res.json(publicArticles);
-    }
+    const articles = await ArticleService.getMergedVisibleArticles(userId);
+    return res.json(articles);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch articles" });
+    return res.status(500).json({ error: "Failed to fetch articles" });
   }
 });
 
-// Create article (authenticated)
+/* -------------------------------------------------------
+   AUTH: Create new article
+------------------------------------------------------- */
 router.post("/", authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { title, content, status } = req.body;
-    if (!title || !content)
-      return res.status(400).json({ error: "Title and content are required" });
+    const { title, content, status, contentFormat } = req.body;
 
-    const authorId = req.user!.userId;
-    const author = await ArticleService.createArticle({
+    const article = await ArticleService.createArticle({
       title,
       content,
       status: status || "draft",
-      authorId,
+      contentFormat: contentFormat || "novel",
+      authorId: req.user!.userId,
       authorName: req.user!.firstName,
     });
 
-    res.status(201).json(author);
+    return res.status(201).json(article);
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to create article" });
+    return res
+      .status(500)
+      .json({ error: err.message || "Failed to create article" });
   }
 });
 
-// Update article (authenticated)
+/* -------------------------------------------------------
+   AUTH: Update article
+------------------------------------------------------- */
 router.put("/:id", authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.userId;
     const updated = await ArticleService.updateArticle(
       req.params.id,
       req.body,
-      userId
+      req.user!.userId
     );
-    res.json(updated);
+
+    if (!updated) return res.status(404).json({ error: "Not found" });
+    return res.json(updated);
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to update article" });
+    return res
+      .status(500)
+      .json({ error: err.message || "Failed to update article" });
   }
 });
 
-// Delete article (authenticated)
+/* -------------------------------------------------------
+   AUTH: Delete single
+------------------------------------------------------- */
 router.delete("/:id", authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.userId;
-    const deleted = await ArticleService.deleteArticleForUser(
+    const ok = await ArticleService.deleteArticleForUser(
       req.params.id,
-      userId
+      req.user!.userId
     );
-    if (!deleted) return res.status(404).json({ error: "Article not found" });
-    res.json({ message: "Article deleted" });
+
+    if (!ok) return res.status(404).json({ error: "Not found" });
+    return res.json({ message: "Article deleted" });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to delete article" });
+    return res
+      .status(500)
+      .json({ error: err.message || "Failed to delete article" });
   }
 });
 
-// Generate article via AI (authenticated) — will publish by default
+/* -------------------------------------------------------
+   AUTH: Bulk delete
+------------------------------------------------------- */
+router.post("/bulk-delete", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const ids = req.body.ids;
+    if (!Array.isArray(ids) || ids.length === 0)
+      return res.status(400).json({ error: "No ids provided" });
+
+    const result = await ArticleService.deleteManyForUser(
+      ids,
+      req.user!.userId
+    );
+
+    return res.json({ deleted: result.deleted });
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ error: err.message || "Failed to bulk delete" });
+  }
+});
+
+/* -------------------------------------------------------
+   AUTH: AI auto generate
+------------------------------------------------------- */
 router.post("/generate", authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const authorId = req.user!.userId;
-    const authorName = req.user!.firstName;
     const article = await ArticleService.generateArticle({
-      id: authorId,
-      name: authorName,
+      id: req.user!.userId,
+      name: req.user!.firstName,
     });
-    res.status(201).json(article);
+
+    return res.status(201).json(article);
   } catch (err) {
-    res.status(500).json({ error: "Failed to generate article" });
+    return res.status(500).json({ error: "Failed to generate article" });
   }
 });
 

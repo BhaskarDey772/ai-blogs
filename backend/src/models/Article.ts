@@ -2,7 +2,11 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IArticle extends Document {
   title: string;
-  content: string;
+  // legacy `content` field kept for compatibility; prefer `currentContent` and `draftContent`
+  content?: string;
+  contentFormat?: "markdown" | "novel";
+  currentContent?: string;
+  draftContent?: string;
   status: "draft" | "published" | "unpublished";
   authorId?: string;
   authorName?: string;
@@ -19,9 +23,18 @@ const ArticleSchema = new Schema<IArticle>(
       required: true,
       trim: true,
     },
+    // The currently published content (Markdown). If the article is published,
+    // this should contain the public content.
+    currentContent: {
+      type: String,
+    },
+    // The author's working draft content (may differ from currentContent until published)
+    draftContent: {
+      type: String,
+    },
+    // Legacy: older documents may still have `content`; keep for compatibility
     content: {
       type: String,
-      required: true,
     },
     status: {
       type: String,

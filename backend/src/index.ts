@@ -4,9 +4,9 @@ import cors from "cors";
 import mongoose from "mongoose";
 import cookieParser from "cookie-parser";
 
-import { articlesRouter, authRouter } from "./routes";
+import { articlesRouter } from "./routes";
 import { setupArticleJob } from "./services";
-import { authMiddleware } from "./middleware/auth";
+import { clerkMiddleware } from "@clerk/express";
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -52,7 +52,11 @@ if (shouldLogRequests) {
 }
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      process.env.FRONTEND_URL,
+    ].filter((url): url is string => !!url),
     credentials: true,
   })
 );
@@ -62,9 +66,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Auth routes (public)
-app.use("/api/auth", authRouter);
-
+app.use(clerkMiddleware());
 // Articles router: handles its own auth for public vs protected endpoints
 app.use("/api/articles", articlesRouter);
 
