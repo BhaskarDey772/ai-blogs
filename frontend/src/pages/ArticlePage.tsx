@@ -15,13 +15,21 @@ export default function ArticlePage() {
   const { isSignedIn } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const data = isSignedIn
-        ? await articleApi.getAll()
-        : await articleApi.getPublic();
-      setArticles(data);
+      try {
+        const data = isSignedIn
+          ? await articleApi.getAll()
+          : await articleApi.getPublic();
+        setArticles(data);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load articles");
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [isSignedIn]);
 
@@ -29,6 +37,7 @@ export default function ArticlePage() {
     try {
       const json = JSON.parse(content);
       const text = extractText(json).trim();
+      if (!text) return "";
       return text.slice(0, 200) + (text.length > 200 ? "…" : "");
     } catch {
       return "";
@@ -42,28 +51,32 @@ export default function ArticlePage() {
     if (!ids.length) return alert("No blogs selected");
     if (!confirm(`Delete ${ids.length} blogs?`)) return;
 
-    await articleApi.bulkDelete(ids);
-    setArticles((prev) => prev.filter((a) => !ids.includes(a.id)));
-    setSelected({});
+    try {
+      await articleApi.bulkDelete(ids);
+      setArticles((prev) => prev.filter((a) => !ids.includes(a.id)));
+      setSelected({});
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete selected blogs");
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex justify-between">
-        <h1 className="text-2xl font-bold text-gray-100">Your Blogs</h1>
+    <div className="max-w-4xl mx-auto py-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-slate-100">Your Blogs</h1>
 
         {isSignedIn && (
           <div className="flex gap-3">
             <Link
               to="/blogs/new"
-              className="px-4 py-2 bg-blue-600 text-white rounded"
+              className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-500"
             >
               New Blog
             </Link>
-
             <button
               onClick={deleteSelected}
-              className="px-4 py-2 bg-red-600 text-white rounded"
+              className="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-500"
             >
               Delete Selected
             </button>
@@ -71,11 +84,21 @@ export default function ArticlePage() {
         )}
       </div>
 
+      {loading && (
+        <p className="text-slate-400 text-sm">Loading your articles…</p>
+      )}
+
+      {!loading && articles.length === 0 && (
+        <p className="text-slate-500 text-sm">
+          No articles yet. Click &quot;New Blog&quot; to create one.
+        </p>
+      )}
+
       <div className="space-y-4">
         {articles.map((a) => (
           <div
             key={a.id}
-            className="p-4 bg-slate-900 border border-gray-700 rounded-xl flex gap-4"
+            className="p-4 bg-slate-900/70 border border-slate-700 rounded-xl flex gap-4"
           >
             {isSignedIn && (
               <input
@@ -89,12 +112,17 @@ export default function ArticlePage() {
             <div className="flex-1">
               <Link
                 to={`/blogs/${a.id}`}
-                className="text-xl font-semibold text-blue-400 hover:text-blue-300"
+                className="text-lg font-semibold text-blue-400 hover:text-blue-300"
               >
                 {a.title}
               </Link>
-
-              <p className="mt-1 text-gray-400 text-sm">{preview(a.content)}</p>
+              <p className="mt-1 text-slate-400 text-sm">
+                {preview(a.content)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {a.authorName && <>By {a.authorName} • </>}
+                {new Date(a.createdAt).toLocaleString()}
+              </p>
             </div>
 
             {isSignedIn && (
@@ -109,8 +137,13 @@ export default function ArticlePage() {
                 <button
                   onClick={async () => {
                     if (!confirm("Delete this article?")) return;
-                    await articleApi.delete(a.id);
-                    setArticles((prev) => prev.filter((x) => x.id !== a.id));
+                    try {
+                      await articleApi.delete(a.id);
+                      setArticles((prev) => prev.filter((x) => x.id !== a.id));
+                    } catch (err) {
+                      console.error(err);
+                      alert("Failed to delete article");
+                    }
                   }}
                   className="text-red-400 hover:text-red-300"
                 >

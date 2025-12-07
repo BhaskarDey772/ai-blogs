@@ -1,196 +1,229 @@
-import { useState, useEffect } from "react";
+"use client";
+
 import {
-  EditorRoot,
   EditorCommand,
-  EditorCommandItem,
   EditorCommandEmpty,
-  EditorContent,
+  EditorCommandItem,
   EditorCommandList,
+  EditorContent,
+  type EditorInstance,
+  EditorRoot,
+  ImageResizer,
+  type JSONContent,
+  handleCommandNavigation,
+  handleImageDrop,
+  handleImagePaste,
 } from "novel";
-import { Save, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useDebouncedCallback } from "use-debounce";
+import { defaultExtensions } from "./extensions";
+import { ColorSelector } from "./selectors/color-selector";
+import { LinkSelector } from "./selectors/link-selector";
+import { MathSelector } from "./selectors/math-selector";
+import { NodeSelector } from "./selectors/node-selector";
+import { Separator } from "./ui/separator";
 
-export default function NovelEditorPage() {
-  const [content, setContent] = useState("");
-  const [savedStatus, setSavedStatus] = useState("");
+import GenerativeMenuSwitch from "./generative/generative-menu-switch";
+import { uploadFn } from "./image-upload";
+import { TextButtons } from "./selectors/text-buttons";
+import { slashCommand, suggestionItems } from "./slash-command";
 
-  // Load saved content on mount
-  useEffect(() => {
-    const saved = localStorage.getItem("novel-content");
-    if (saved) {
-      setContent(saved);
+import hljs from "highlight.js";
+
+const extensions = [...defaultExtensions, slashCommand];
+
+/** Minimal valid Novel JSON */
+const HARD_CODED_INITIAL: JSONContent = {
+  type: "doc",
+  content: [
+    {
+      type: "heading",
+      attrs: { level: 2 },
+      content: [{ type: "text", text: "Hello Novel 👋" }],
+    },
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: "Start typing something…" }],
+    },
+  ],
+};
+
+const TailwindAdvancedEditor = ({
+  value,
+  onChange,
+  readOnly = false,
+}: {
+  value?: string;
+  onChange?: (content: string) => void;
+  readOnly?: boolean;
+}) => {
+  const [initialContent, setInitialContent] = useState<JSONContent | null>(
+    null
+  );
+  const [saveStatus, setSaveStatus] = useState("Saved");
+  const [charsCount, setCharsCount] = useState<number>(0);
+
+  const [openNode, setOpenNode] = useState(false);
+  const [openColor, setOpenColor] = useState(false);
+  const [openLink, setOpenLink] = useState(false);
+  const [openAI, setOpenAI] = useState(false);
+
+  // highlight code blocks
+  const highlightCodeblocks = (content: string) => {
+    const doc = new DOMParser().parseFromString(content, "text/html");
+    doc.querySelectorAll("pre code").forEach((el) => {
+      // @ts-ignore
+      hljs.highlightElement(el);
+    });
+    return new XMLSerializer().serializeToString(doc);
+  };
+
+  /** DEBOUNCED: console.log only */
+  const debouncedUpdates = useDebouncedCallback((editor: EditorInstance) => {
+    const json = editor.getJSON();
+    const html = highlightCodeblocks(editor.getHTML());
+    const markdown = editor.storage.markdown?.getMarkdown?.() ?? "";
+
+    // Save to localStorage
+    window.localStorage.setItem("novel-content", JSON.stringify(json));
+    window.localStorage.setItem("html-content", html);
+    window.localStorage.setItem("markdown", markdown);
+
+    setCharsCount(editor.storage.characterCount.words());
+    setSaveStatus("Saved");
+
+    console.log("JSON:", json);
+    console.log("HTML:", html);
+    console.log("MD:", markdown);
+
+    // Pass updated JSON to parent (BlogEdit)
+    if (!readOnly) {
+      onChange?.(JSON.stringify(json));
     }
-  }, []);
+  }, 400);
 
-  // Auto-save functionality
+  /** Instead of reading from localStorage, we set HARD-CODED content */
   useEffect(() => {
-    if (!content) return;
+    // 1. If BlogEdit gives us JSON string from backend → use it
+    if (value) {
+      try {
+        setInitialContent(JSON.parse(value));
+        return;
+      } catch (err) {
+        console.error("Invalid JSON from backend:", err);
+      }
+    }
 
-    const autoSave = setTimeout(() => {
-      localStorage.setItem("novel-content", content);
-      setSavedStatus("Saved");
-      setTimeout(() => setSavedStatus(""), 2000);
-    }, 1000);
+    // 2. Else load from localStorage
+    const ls = window.localStorage.getItem("novel-content");
+    if (ls) {
+      try {
+        setInitialContent(JSON.parse(ls));
+        return;
+      } catch (e) {
+        console.error("Invalid JSON in localStorage");
+      }
+    }
 
-    return () => clearTimeout(autoSave);
-  }, [content]);
+    // 3. Fallback minimal doc (required for Novel)
+    setInitialContent({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Start writing…" }],
+        },
+      ],
+    });
+  }, [value]);
 
-  const handleManualSave = () => {
-    localStorage.setItem("novel-content", content);
-    setSavedStatus("Saved manually");
-    setTimeout(() => setSavedStatus(""), 2000);
-  };
-
-  const handleExport = () => {
-    const blob = new Blob([content], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "document.html";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  if (!initialContent) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-gray-600" />
-              <span className="font-semibold text-gray-800">Novel Editor</span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {savedStatus && (
-                <div className="text-sm text-green-600">{savedStatus}</div>
-              )}
-              <button
-                onClick={handleManualSave}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-              >
-                <Save className="w-4 h-4" />
-                Save
-              </button>
-              <button
-                onClick={handleExport}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium"
-              >
-                Export
-              </button>
-            </div>
+    <div className="relative w-full max-w-screen-lg">
+      {/* Status badges */}
+      <div className="flex absolute right-5 top-5 z-10 mb-5 gap-2">
+        <div className="rounded-lg bg-accent px-2 py-1 text-sm text-muted-foreground">
+          {saveStatus}
+        </div>
+        {charsCount > 0 && (
+          <div className="rounded-lg bg-accent px-2 py-1 text-sm text-muted-foreground">
+            {charsCount} Words
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Editor Container */}
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 min-h-screen">
-          <EditorRoot>
-            <EditorContent
-              initialContent={content}
-              onUpdate={({ editor }) => {
-                const html = editor.getHTML();
-                if (html) {
-                  setContent(html);
-                }
-              }}
-              className="novel-editor"
-            />
-          </EditorRoot>
-        </div>
-      </div>
+      <EditorRoot>
+        <EditorContent
+          initialContent={initialContent}
+          editable={!readOnly}
+          extensions={extensions as any}
+          className="relative min-h-[400px] w-full border-muted bg-background sm:rounded-lg sm:border sm:shadow-lg"
+          editorProps={{
+            handleDOMEvents: {
+              keydown: (_view, event) => handleCommandNavigation(event),
+            },
+            handlePaste: (view, event) =>
+              handleImagePaste(view, event, uploadFn),
+            handleDrop: (view, event, _slice, moved) =>
+              handleImageDrop(view, event, moved, uploadFn),
+            attributes: {
+              class:
+                "prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full px-4 py-6",
+            },
+          }}
+          onUpdate={({ editor }) => {
+            setSaveStatus("Unsaved");
+            debouncedUpdates(editor);
+            const json = editor.getJSON();
+            onChange?.(JSON.stringify(json));
+          }}
+          slotAfter={<ImageResizer />}
+        >
+          {/* Slash Commands */}
+          <EditorCommand className="z-50 h-auto max-h-[330px] overflow-y-auto rounded-md border border-muted bg-background px-1 py-2 shadow-md transition-all">
+            <EditorCommandEmpty className="px-2 text-muted-foreground">
+              No results
+            </EditorCommandEmpty>
+            <EditorCommandList>
+              {suggestionItems.map((item) => (
+                <EditorCommandItem
+                  value={item.title}
+                  onCommand={(val) => item.command?.(val)}
+                  key={item.title}
+                  className="flex w-full items-center space-x-2 rounded-md px-2 py-1 text-left text-sm hover:bg-accent aria-selected:bg-accent"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-background border-muted">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <p className="font-medium">{item.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </div>
+                </EditorCommandItem>
+              ))}
+            </EditorCommandList>
+          </EditorCommand>
 
-      {/* Custom Styles */}
-      <style>{`
-        .novel-editor {
-          padding: 3rem;
-          min-height: 100vh;
-        }
-
-        .novel-editor .ProseMirror {
-          font-family: 'Inter', system-ui, -apple-system, sans-serif;
-          font-size: 1rem;
-          line-height: 1.6;
-          color: #1f2937;
-        }
-
-        .novel-editor .ProseMirror:focus {
-          outline: none;
-        }
-
-        .novel-editor .ProseMirror h1 {
-          font-size: 2.5rem;
-          font-weight: 700;
-          margin-top: 2rem;
-          margin-bottom: 1rem;
-        }
-
-        .novel-editor .ProseMirror h2 {
-          font-size: 2rem;
-          font-weight: 700;
-          margin-top: 1.5rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .novel-editor .ProseMirror h3 {
-          font-size: 1.5rem;
-          font-weight: 600;
-          margin-top: 1.25rem;
-          margin-bottom: 0.5rem;
-        }
-
-        .novel-editor .ProseMirror p {
-          margin: 0.75rem 0;
-        }
-
-        .novel-editor .ProseMirror ul,
-        .novel-editor .ProseMirror ol {
-          padding-left: 1.5rem;
-          margin: 0.75rem 0;
-        }
-
-        .novel-editor .ProseMirror li {
-          margin: 0.25rem 0;
-        }
-
-        .novel-editor .ProseMirror code {
-          background-color: #f3f4f6;
-          padding: 0.125rem 0.375rem;
-          border-radius: 0.25rem;
-          font-family: 'Courier New', monospace;
-          font-size: 0.875rem;
-        }
-
-        .novel-editor .ProseMirror pre {
-          background-color: #1f2937;
-          color: #f9fafb;
-          padding: 1rem;
-          border-radius: 0.5rem;
-          overflow-x: auto;
-          margin: 1rem 0;
-        }
-
-        .novel-editor .ProseMirror blockquote {
-          border-left: 3px solid #d1d5db;
-          padding-left: 1rem;
-          color: #6b7280;
-          font-style: italic;
-          margin: 1rem 0;
-        }
-
-        .novel-editor .ProseMirror a {
-          color: #3b82f6;
-          text-decoration: underline;
-        }
-
-        .novel-editor .ProseMirror img {
-          max-width: 100%;
-          height: auto;
-          border-radius: 0.5rem;
-          margin: 1rem 0;
-        }
-      `}</style>
+          {/* Top toolbar */}
+          <GenerativeMenuSwitch open={openAI} onOpenChange={setOpenAI}>
+            <Separator orientation="vertical" />
+            <NodeSelector open={openNode} onOpenChange={setOpenNode} />
+            <Separator orientation="vertical" />
+            <LinkSelector open={openLink} onOpenChange={setOpenLink} />
+            <Separator orientation="vertical" />
+            <MathSelector />
+            <Separator orientation="vertical" />
+            <TextButtons />
+            <Separator orientation="vertical" />
+            <ColorSelector open={openColor} onOpenChange={setOpenColor} />
+          </GenerativeMenuSwitch>
+        </EditorContent>
+      </EditorRoot>
     </div>
   );
-}
+};
+
+export default TailwindAdvancedEditor;

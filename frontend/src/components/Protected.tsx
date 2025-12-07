@@ -1,6 +1,8 @@
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 
-export function Protected({ children }) {
+import type { ReactNode } from "react";
+
+export function Protected({ children }: { children: ReactNode }) {
   return (
     <>
       <SignedIn>{children}</SignedIn>
