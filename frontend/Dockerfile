@@ -5,6 +5,7 @@ WORKDIR /app
 
 ARG VITE_API_BASE
 ENV VITE_API_BASE=$VITE_API_BASE
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
 COPY package.json package-lock.json* ./
 RUN npm ci --silent || npm install --silent
