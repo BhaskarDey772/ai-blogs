@@ -13,7 +13,7 @@ export default function LoginPage() {
   }, [user, navigate]);
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50">
+    <div className="flex justify-center items-center min-h-screen bg-dark">
       <SignIn />
     </div>
   );

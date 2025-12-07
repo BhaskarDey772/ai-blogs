@@ -21,6 +21,7 @@ const BlogEdit: React.FC = () => {
       try {
         const article: Article = await articleApi.getById(id);
         setTitle(article.title);
+        console.debug("BlogEdit: loaded title:", article.title);
         setContent(article.content || "");
       } catch (err) {
         console.error(err);
@@ -31,27 +32,33 @@ const BlogEdit: React.FC = () => {
     })();
   }, [id]);
 
-  const handleSave = async (status: "draft" | "published") => {
-    if (!title.trim()) {
-      alert("Title is required");
-      return;
-    }
-    if (!content) {
-      alert("Content is empty");
-      return;
-    }
+  const handleSave = async (
+    status: "draft" | "published",
+    freshTitle: string,
+    freshContent: string
+  ) => {
+    if (!freshTitle.trim()) return alert("Title is required");
+    if (!freshContent) return alert("Content is empty");
+
+    console.log("Saving with:", freshTitle, freshContent, status);
     setSaving(true);
+
     try {
       if (isEditing && id) {
-        await articleApi.update(id, { title, content, status });
+        await articleApi.update(id, {
+          title: freshTitle,
+          content: freshContent,
+          status,
+        });
         navigate(`/blogs/${id}`);
       } else {
-        const created = await articleApi.create({ title, content, status });
+        const created = await articleApi.create({
+          title: freshTitle,
+          content: freshContent,
+          status,
+        });
         navigate(`/blogs/${created.id}`);
       }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save article");
     } finally {
       setSaving(false);
     }
@@ -69,14 +76,17 @@ const BlogEdit: React.FC = () => {
         <input
           className="flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-lg font-semibold text-slate-100 placeholder:text-slate-500"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            console.debug("BlogEdit: title input change ->", e.target.value);
+            setTitle(e.target.value);
+          }}
           placeholder="Article title"
         />
 
         <div className="flex gap-2 sm:ml-auto">
           <button
             type="button"
-            onClick={() => handleSave("draft")}
+            onClick={() => handleSave("draft", title, content)}
             disabled={saving}
             className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 hover:bg-slate-700 disabled:opacity-60"
           >
@@ -84,7 +94,7 @@ const BlogEdit: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => handleSave("published")}
+            onClick={() => handleSave("published", title, content)}
             disabled={saving}
             className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60"
           >

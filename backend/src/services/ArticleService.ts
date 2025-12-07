@@ -57,9 +57,7 @@ export class ArticleService {
       return obj;
     });
 
-    const publicNotMine = publicArticles.filter((a) => a.authorId !== userId);
-
-    return [...ownMapped, ...publicNotMine];
+    return ownMapped;
   }
 
   /* ---------------------------- SINGLE ARTICLE LOGIC ---------------------------- */
@@ -136,6 +134,8 @@ export class ArticleService {
     if (isPublishing) {
       const publishContent =
         data.content ?? article.draftContent ?? article.currentContent ?? "";
+
+      article.title = data.title ?? article.title;
 
       article.currentContent = publishContent;
       article.draftContent = publishContent;

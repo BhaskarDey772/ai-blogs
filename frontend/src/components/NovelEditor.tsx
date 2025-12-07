@@ -92,11 +92,7 @@ const TailwindAdvancedEditor = ({
     setCharsCount(editor.storage.characterCount.words());
     setSaveStatus("Saved");
 
-    console.log("JSON:", json);
-    console.log("HTML:", html);
-    console.log("MD:", markdown);
-
-    // Pass updated JSON to parent (BlogEdit)
+    // Pass updated Markdown to parent (BlogEdit)
     if (!readOnly) {
       onChange?.(JSON.stringify(json));
     }
@@ -140,14 +136,14 @@ const TailwindAdvancedEditor = ({
   if (!initialContent) return null;
 
   return (
-    <div className="relative w-full max-w-screen-lg">
+    <div className="relative w-full">
       {/* Status badges */}
       <div className="flex absolute right-5 top-5 z-10 mb-5 gap-2">
-        <div className="rounded-lg bg-accent px-2 py-1 text-sm text-muted-foreground">
+        <div className="rounded-full bg-dark/80 dark:bg-slate-800/80 px-3 py-1 text-sm font-medium text-slate-700 dark:text-slate-200 shadow">
           {saveStatus}
         </div>
         {charsCount > 0 && (
-          <div className="rounded-lg bg-accent px-2 py-1 text-sm text-muted-foreground">
+          <div className="rounded-full bg-dark/80 dark:bg-slate-800/80 px-3 py-1 text-sm font-medium text-slate-700 dark:text-slate-200 shadow">
             {charsCount} Words
           </div>
         )}
@@ -158,7 +154,7 @@ const TailwindAdvancedEditor = ({
           initialContent={initialContent}
           editable={!readOnly}
           extensions={extensions as any}
-          className="relative min-h-[400px] w-full border-muted bg-background sm:rounded-lg sm:border sm:shadow-lg"
+          className="relative min-h-[420px] w-full bg-dark dark:bg-slate-800 sm:rounded-lg sm:border sm:border-slate-100 dark:sm:border-slate-700 sm:shadow-card-lg"
           editorProps={{
             handleDOMEvents: {
               keydown: (_view, event) => handleCommandNavigation(event),
@@ -169,7 +165,7 @@ const TailwindAdvancedEditor = ({
               handleImageDrop(view, event, moved, uploadFn),
             attributes: {
               class:
-                "prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full px-4 py-6",
+                "prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-3xl px-6 py-8 mx-auto",
             },
           }}
           onUpdate={({ editor }) => {
@@ -207,19 +203,21 @@ const TailwindAdvancedEditor = ({
             </EditorCommandList>
           </EditorCommand>
 
-          {/* Top toolbar */}
-          <GenerativeMenuSwitch open={openAI} onOpenChange={setOpenAI}>
-            <Separator orientation="vertical" />
-            <NodeSelector open={openNode} onOpenChange={setOpenNode} />
-            <Separator orientation="vertical" />
-            <LinkSelector open={openLink} onOpenChange={setOpenLink} />
-            <Separator orientation="vertical" />
-            <MathSelector />
-            <Separator orientation="vertical" />
-            <TextButtons />
-            <Separator orientation="vertical" />
-            <ColorSelector open={openColor} onOpenChange={setOpenColor} />
-          </GenerativeMenuSwitch>
+          {/* Top toolbar — hide interactive controls when readOnly */}
+          {!readOnly && (
+            <GenerativeMenuSwitch open={openAI} onOpenChange={setOpenAI}>
+              <Separator orientation="vertical" />
+              <NodeSelector open={openNode} onOpenChange={setOpenNode} />
+              <Separator orientation="vertical" />
+              <LinkSelector open={openLink} onOpenChange={setOpenLink} />
+              <Separator orientation="vertical" />
+              <MathSelector />
+              <Separator orientation="vertical" />
+              <TextButtons />
+              <Separator orientation="vertical" />
+              <ColorSelector open={openColor} onOpenChange={setOpenColor} />
+            </GenerativeMenuSwitch>
+          )}
         </EditorContent>
       </EditorRoot>
     </div>
