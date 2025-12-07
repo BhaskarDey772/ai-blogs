@@ -1,0 +1,4 @@
+window._env_ = {
+    VITE_API_BASE: "__VITE_API_BASE__",
+    VITE_CLERK_PUBLISHABLE_KEY: "__VITE_CLERK_PUBLISHABLE_KEY__"
+};
