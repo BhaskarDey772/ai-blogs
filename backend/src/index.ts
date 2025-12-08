@@ -65,7 +65,6 @@ app.use(
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
-
 app.use(clerkMiddleware());
 // Articles router: handles its own auth for public vs protected endpoints
 app.use("/api/articles", articlesRouter);

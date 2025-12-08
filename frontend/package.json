@@ -52,6 +52,7 @@
     "jotai": "^2.15.2",
     "katex": "^0.16.25",
     "lucide-react": "^0.556.0",
+    "marked": "^17.0.1",
     "next-themes": "^0.4.6",
     "novel": "^1.0.2",
     "react": "18.2.0",

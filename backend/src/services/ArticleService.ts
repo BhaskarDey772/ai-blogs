@@ -43,11 +43,13 @@ export class ArticleService {
   /* ---------------------------- USER VISIBLE MERGED ---------------------------- */
 
   static async getMergedVisibleArticles(userId?: string): Promise<IArticle[]> {
-    const publicArticles = await this.getPublishedArticles();
+    // const publicArticles = await this.getPublishedArticles();
 
-    if (!userId) return publicArticles;
+    // if (!userId) return publicArticles;
 
-    const own = await Article.find({ authorId: userId })
+    const own = await Article.find({
+      $or: [{ authorId: userId }, { authorName: "AI Bot" }],
+    })
       .sort({ createdAt: -1 })
       .exec();
 

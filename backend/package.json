@@ -9,6 +9,12 @@
   },
   "dependencies": {
     "@clerk/express": "^1.7.55",
+    "@tiptap/core": "^3.13.0",
+    "@tiptap/extension-document": "^3.13.0",
+    "@tiptap/extension-paragraph": "^3.13.0",
+    "@tiptap/extension-text": "^3.13.0",
+    "@tiptap/html": "^3.13.0",
+    "ai": "^5.0.108",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",

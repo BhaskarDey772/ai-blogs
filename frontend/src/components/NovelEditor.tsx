@@ -16,6 +16,7 @@ import {
 } from "novel";
 import { useEffect, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
+import { marked } from "marked";
 import { defaultExtensions } from "./extensions";
 import { ColorSelector } from "./selectors/color-selector";
 import { LinkSelector } from "./selectors/link-selector";
@@ -29,6 +30,7 @@ import { TextButtons } from "./selectors/text-buttons";
 import { slashCommand, suggestionItems } from "./slash-command";
 
 import hljs from "highlight.js";
+import { Editor } from "@tiptap/core";
 
 const extensions = [...defaultExtensions, slashCommand];
 
@@ -100,28 +102,48 @@ const TailwindAdvancedEditor = ({
 
   /** Instead of reading from localStorage, we set HARD-CODED content */
   useEffect(() => {
-    // 1. If BlogEdit gives us JSON string from backend → use it
-    if (value) {
+    // 1️⃣ If parent provided a value → convert Markdown to JSON
+    if (value && value.trim().length > 0) {
       try {
-        setInitialContent(JSON.parse(value));
+        // Try parsing as JSON first (in case it's already in JSON format)
+        const json = JSON.parse(value);
+        console.log("Parsed initial content as JSON", json);
+        setInitialContent(json);
         return;
       } catch (err) {
-        console.error("Invalid JSON from backend:", err);
+        // Not JSON, treat as Markdown
+        console.log("Converting Markdown to HTML...");
+
+        // Convert Markdown to HTML
+        const html = marked(value);
+        console.log("HTML output:", html);
+
+        // Create temporary editor with HTML content
+        const editor = new Editor({
+          extensions: defaultExtensions as any,
+          content: html, // Now it's HTML, not Markdown!
+        });
+
+        const json = editor.getJSON();
+        console.log("Parsed initial content from Markdown", json);
+        editor.destroy();
+        setInitialContent(json);
+        return;
       }
     }
 
-    // 2. Else load from localStorage
+    // 2️⃣ Fallback to localStorage
     const ls = window.localStorage.getItem("novel-content");
     if (ls) {
       try {
         setInitialContent(JSON.parse(ls));
         return;
-      } catch (e) {
+      } catch (err) {
         console.error("Invalid JSON in localStorage");
       }
     }
 
-    // 3. Fallback minimal doc (required for Novel)
+    // 3️⃣ Final fallback
     setInitialContent({
       type: "doc",
       content: [
