@@ -1,18 +1,12 @@
 import axios, { AxiosInstance } from "axios";
 
-// Prefer runtime-injected env (window._env_) so Docker/nginx can set API URL at container start.
+// Prefer runtime-injected env (window._env_)
 const runtimeEnv =
   (typeof window !== "undefined" && (window as any)._env_) || null;
-
 const API_BASE =
   runtimeEnv?.VITE_API_BASE || import.meta.env.VITE_API_BASE || "/api";
 
-// DEBUG: Log what API_BASE is being used
 console.log("=== API Configuration Debug ===");
-console.log("window._env_:", (window as any)._env_);
-console.log("runtimeEnv:", runtimeEnv);
-console.log("runtimeEnv?.VITE_API_BASE:", runtimeEnv?.VITE_API_BASE);
-console.log("import.meta.env.VITE_API_BASE:", import.meta.env.VITE_API_BASE);
 console.log("Final API_BASE being used:", API_BASE);
 console.log("===============================");
 
@@ -22,13 +16,39 @@ const client: AxiosInstance = axios.create({
     "Content-Type": "application/json",
   },
   withCredentials: true,
-  maxRedirects: 0, // CRITICAL: Disable automatic redirects to prevent path stripping
 });
 
-// Intercept requests to log the full URL being called
+// Store the getToken function to be set by the app
+let getTokenFunction: (() => Promise<string | null>) | null = null;
+
+export const setAuthTokenGetter = (
+  getToken: () => Promise<string | null>
+): void => {
+  getTokenFunction = getToken;
+};
+
+// Intercept requests to add Clerk token
 client.interceptors.request.use(
-  (config) => {
+  async (config) => {
     console.log("Making API request to:", (config.baseURL || "") + config.url);
+
+    // Add Clerk token if available
+    if (getTokenFunction) {
+      try {
+        const token = await getTokenFunction();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          console.log("Added Clerk token to request");
+        } else {
+          console.log("No Clerk token available");
+        }
+      } catch (error) {
+        console.error("Error getting Clerk token:", error);
+      }
+    } else {
+      console.log("No token getter function set");
+    }
+
     return config;
   },
   (error) => {
@@ -36,13 +56,12 @@ client.interceptors.request.use(
   }
 );
 
-// Intercept responses to handle redirects manually
+// Intercept responses to log errors
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 302 || error.response?.status === 301) {
-      console.error("API returned redirect:", error.response.headers.location);
-      console.error("This is likely a backend configuration issue");
+    if (error.response?.status === 401) {
+      console.error("Authentication failed - 401 Unauthorized");
     }
     return Promise.reject(error);
   }
@@ -51,7 +70,7 @@ client.interceptors.response.use(
 export interface Article {
   id: string;
   title: string;
-  content: string; // pure Markdown string
+  content: string;
   status?: "draft" | "published" | "unpublished";
   authorId?: string;
   authorName?: string;
@@ -92,7 +111,7 @@ export const articleApi = {
 
   create: async (article: {
     title: string;
-    content: string; // markdown
+    content: string;
     status?: "draft" | "published" | "unpublished";
   }): Promise<Article> => {
     const { data } = await client.post("/articles", article);
@@ -103,7 +122,7 @@ export const articleApi = {
     id: string,
     article: {
       title?: string;
-      content?: string; // markdown
+      content?: string;
       status?: "draft" | "published" | "unpublished";
     }
   ): Promise<Article> => {
@@ -125,8 +144,5 @@ export const articleApi = {
     return data;
   },
 };
-
-// Authentication is handled by Clerk on the frontend and backend.
-// Use Clerk hooks (`useAuth`, `useUser`) directly instead of this authApi.
 
 export default client;
