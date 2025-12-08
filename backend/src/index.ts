@@ -68,6 +68,7 @@ app.get("/health", (req, res) => {
 app.use(clerkMiddleware());
 // Articles router: handles its own auth for public vs protected endpoints
 app.use("/api/articles", articlesRouter);
+app.use("/api/articles/", articlesRouter);
 
 // MongoDB Connection
 async function connectDB(): Promise<void> {

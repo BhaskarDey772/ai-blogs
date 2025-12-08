@@ -3,6 +3,7 @@ import axios, { AxiosInstance } from "axios";
 // Prefer runtime-injected env (window._env_) so Docker/nginx can set API URL at container start.
 const runtimeEnv =
   (typeof window !== "undefined" && (window as any)._env_) || null;
+
 const API_BASE =
   runtimeEnv?.VITE_API_BASE || import.meta.env.VITE_API_BASE || "/api";
 
@@ -21,7 +22,31 @@ const client: AxiosInstance = axios.create({
     "Content-Type": "application/json",
   },
   withCredentials: true,
+  maxRedirects: 0, // CRITICAL: Disable automatic redirects to prevent path stripping
 });
+
+// Intercept requests to log the full URL being called
+client.interceptors.request.use(
+  (config) => {
+    console.log("Making API request to:", (config.baseURL || "") + config.url);
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Intercept responses to handle redirects manually
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 302 || error.response?.status === 301) {
+      console.error("API returned redirect:", error.response.headers.location);
+      console.error("This is likely a backend configuration issue");
+    }
+    return Promise.reject(error);
+  }
+);
 
 export interface Article {
   id: string;
