@@ -16,6 +16,7 @@ const MONGODB_URI =
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+
 // Simple request logger (controls: NODE_ENV and LOG_REQUESTS)
 const shouldLogRequests =
   process.env.LOG_REQUESTS === "true" || process.env.NODE_ENV !== "production";
@@ -50,6 +51,7 @@ if (shouldLogRequests) {
     next();
   });
 }
+
 app.use(
   cors({
     origin: [
@@ -61,14 +63,17 @@ app.use(
   })
 );
 
-// Health check endpoint
+// Health check endpoint (public - no auth)
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// IMPORTANT: Add Clerk middleware AFTER public routes
+// This makes Clerk available but doesn't enforce auth on all routes
 app.use(clerkMiddleware());
+
 // Articles router: handles its own auth for public vs protected endpoints
 app.use("/api/articles", articlesRouter);
-app.use("/api/articles/", articlesRouter);
 
 // MongoDB Connection
 async function connectDB(): Promise<void> {
