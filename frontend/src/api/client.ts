@@ -6,6 +6,15 @@ const runtimeEnv =
 const API_BASE =
   runtimeEnv?.VITE_API_BASE || import.meta.env.VITE_API_BASE || "/api";
 
+// DEBUG: Log what API_BASE is being used
+console.log("=== API Configuration Debug ===");
+console.log("window._env_:", (window as any)._env_);
+console.log("runtimeEnv:", runtimeEnv);
+console.log("runtimeEnv?.VITE_API_BASE:", runtimeEnv?.VITE_API_BASE);
+console.log("import.meta.env.VITE_API_BASE:", import.meta.env.VITE_API_BASE);
+console.log("Final API_BASE being used:", API_BASE);
+console.log("===============================");
+
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE,
   headers: {
