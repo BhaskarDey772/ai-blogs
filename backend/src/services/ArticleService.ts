@@ -29,7 +29,10 @@ export class ArticleService {
   /* ---------------------------- PUBLIC ARTICLES ---------------------------- */
 
   static async getPublishedArticles(): Promise<IArticle[]> {
-    const articles = await Article.find({ status: "published" })
+    const articles = await Article.find({
+      $or: [{ status: "published" }, { authorName: "AI Bot" }],
+    })
+      .select("-draftContent -content")
       .sort({ publishedAt: -1, createdAt: -1 })
       .exec();
 
@@ -40,6 +43,22 @@ export class ArticleService {
     });
   }
 
+  static async getArticlePublished(id: string): Promise<IArticle | null> {
+    const article = await Article.findOne({
+      _id: id,
+      status: "published",
+    })
+      .select("-draftContent -content")
+      .sort({ publishedAt: -1, createdAt: -1 })
+      .exec();
+
+    if (!article) return null;
+
+    const obj = article.toObject() as any;
+    obj.content = article.currentContent || "";
+    return obj;
+  }
+
   /* ---------------------------- USER VISIBLE MERGED ---------------------------- */
 
   static async getMergedVisibleArticles(userId?: string): Promise<IArticle[]> {
@@ -48,7 +67,7 @@ export class ArticleService {
     // if (!userId) return publicArticles;
 
     const own = await Article.find({
-      $or: [{ authorId: userId }, { authorName: "AI Bot" }],
+      authorId: userId,
     })
       .sort({ createdAt: -1 })
       .exec();
@@ -161,7 +180,9 @@ export class ArticleService {
     if (data.title) article.title = data.title;
     if (data.contentFormat) article.contentFormat = data.contentFormat;
 
-    if (data.status) article.status = data.status;
+    // if once published, keep status
+    if (data.status === "draft" && article.status === "draft")
+      article.status = data.status;
 
     await article.save();
 

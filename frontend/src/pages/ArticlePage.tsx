@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { articleApi, Article } from "@/api/client";
 import { Link } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 
 function extractText(json: any): string {
   if (!json) return "";
@@ -13,16 +13,18 @@ function extractText(json: any): string {
 
 export default function ArticlePage() {
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
+
   const [articles, setArticles] = useState<Article[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isSignedIn) return;
+
     (async () => {
       try {
-        const data = isSignedIn
-          ? await articleApi.getAll()
-          : await articleApi.getPublic();
+        const data = await articleApi.getAll();
         setArticles(data);
       } catch (err) {
         console.error(err);
@@ -37,7 +39,6 @@ export default function ArticlePage() {
     try {
       const json = JSON.parse(content);
       const text = extractText(json).trim();
-      if (!text) return "";
       return text.slice(0, 200) + (text.length > 200 ? "…" : "");
     } catch {
       return "";
@@ -62,21 +63,25 @@ export default function ArticlePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-6 space-y-6">
+    <div className="max-w-4xl mx-auto py-6 space-y-8">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-100">Your Blogs</h1>
+        <h1 className="text-3xl font-bold text-slate-100">My Blogs</h1>
 
         {isSignedIn && (
           <div className="flex gap-3">
+            {/* New Blog button */}
             <Link
-              to="/blogs/new"
-              className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-500"
+              to="/myblogs/new"
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold shadow hover:bg-blue-500 transition"
             >
-              New Blog
+              + New Blog
             </Link>
+
+            {/* Delete Selected */}
             <button
               onClick={deleteSelected}
-              className="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-500"
+              className="px-4 py-2 rounded-lg bg-red-400 text-white text-sm font-semibold shadow hover:bg-red-500 transition"
             >
               Delete Selected
             </button>
@@ -84,75 +89,76 @@ export default function ArticlePage() {
         )}
       </div>
 
-      {loading && (
-        <p className="text-slate-400 text-sm">Loading your articles…</p>
-      )}
-
-      {!loading && articles.length === 0 && (
-        <p className="text-slate-500 text-sm">
-          No articles yet. Click &quot;New Blog&quot; to create one.
-        </p>
-      )}
+      {loading && <p className="text-slate-400 text-sm">Loading…</p>}
 
       <div className="space-y-4">
-        {articles.map((a) => (
-          <div
-            key={a.id}
-            className="p-4 bg-slate-900/70 border border-slate-700 rounded-xl flex gap-4"
-          >
-            {isSignedIn && (
-              <input
-                type="checkbox"
-                checked={!!selected[a.id]}
-                onChange={() => toggle(a.id)}
-                className="mt-2 accent-blue-500"
-              />
-            )}
+        {articles.map((a) => {
+          const isAuthor = user?.id === a.authorId;
 
-            <div className="flex-1">
-              <Link
-                to={`/blogs/${a.id}`}
-                className="text-lg font-semibold text-blue-400 hover:text-blue-300"
-              >
-                {a.title}
-              </Link>
-              <p className="mt-1 text-slate-400 text-sm">
-                {preview(a.content)}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {a.authorName && <>By {a.authorName} • </>}
-                {new Date(a.createdAt).toLocaleString()}
-              </p>
-            </div>
+          return (
+            <div
+              key={a.id}
+              className="p-5 bg-slate-900 border border-slate-700 rounded-xl flex gap-4 shadow hover:shadow-lg transition"
+            >
+              {isAuthor && (
+                <input
+                  type="checkbox"
+                  checked={!!selected[a.id]}
+                  onChange={() => toggle(a.id)}
+                  className="mt-1 scale-110 accent-blue-500"
+                />
+              )}
 
-            {isSignedIn && (
-              <div className="flex flex-col text-sm gap-2">
+              <div className="flex-1">
                 <Link
-                  to={`/blogs/${a.id}/edit`}
-                  className="text-blue-400 hover:text-blue-300"
+                  to={`/blogs/${a.id}`}
+                  className="text-xl font-semibold text-blue-400 hover:text-blue-300 transition"
                 >
-                  Edit
+                  {a.title}
                 </Link>
 
-                <button
-                  onClick={async () => {
-                    if (!confirm("Delete this article?")) return;
-                    try {
-                      await articleApi.delete(a.id);
-                      setArticles((prev) => prev.filter((x) => x.id !== a.id));
-                    } catch (err) {
-                      console.error(err);
-                      alert("Failed to delete article");
-                    }
-                  }}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  Delete
-                </button>
+                <p className="mt-1 text-slate-400 text-sm">
+                  {preview(a.content)}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {new Date(a.createdAt).toLocaleString()}
+                </p>
               </div>
-            )}
-          </div>
-        ))}
+
+              {/* Edit + Delete for own posts */}
+              {isAuthor && (
+                <div className="flex flex-col text-sm gap-2">
+                  <Link
+                    to={`/myblogs/${a.id}/edit`}
+                    className="px-3 py-1 rounded-md text-blue-400 border border-blue-500 hover:bg-blue-500/20 hover:text-blue-300 transition font-medium"
+                  >
+                    Edit
+                  </Link>
+
+                  <button
+                    onClick={async () => {
+                      if (!confirm("Delete this article?")) return;
+
+                      try {
+                        await articleApi.delete(a.id);
+                        setArticles((prev) =>
+                          prev.filter((x) => x.id !== a.id)
+                        );
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to delete article");
+                      }
+                    }}
+                    className="px-3 py-1 rounded-md text-red-400 border border-red-500 hover:bg-red-500/20 hover:text-red-300 transition font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

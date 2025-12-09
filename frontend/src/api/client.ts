@@ -104,6 +104,11 @@ export const articleApi = {
     return data;
   },
 
+  getPublicById: async (id: string): Promise<Article> => {
+    const { data } = await client.get(`/articles/public/${id}`);
+    return data;
+  },
+
   getById: async (id: string): Promise<Article> => {
     const { data } = await client.get(`/articles/${id}`);
     return data;

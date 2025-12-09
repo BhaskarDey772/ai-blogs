@@ -38,6 +38,19 @@ router.get("/:id", optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/public/:id", async (req, res) => {
+  try {
+    const article = await ArticleService.getArticlePublished(req.params.id);
+
+    if (!article) return res.status(404).json({ error: "Not found" });
+    return res.json(article);
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ error: err.message || "Failed to fetch article" });
+  }
+});
+
 /* -------------------------------------------------------
    AUTH: Get all articles visible to the user
    - Own drafts/unpublished
