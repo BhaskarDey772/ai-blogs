@@ -20,7 +20,7 @@ import { Toaster } from "sonner";
 export default function App() {
   return (
     <Router>
-      <Toaster richColors position="top-right" />
+      <Toaster richColors closeButton position="bottom-right" />
       <div className="bg-slate-950 min-h-screen text-gray-100">
         <div className="max-w-4xl mx-auto p-6">
           <Navbar />
