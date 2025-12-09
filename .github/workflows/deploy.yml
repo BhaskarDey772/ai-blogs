@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   deploy:
@@ -12,6 +12,60 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 1️⃣ Configure AWS for calling CodeBuild APIs
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 2️⃣ Wait for CodeBuild build that matches this commit
+      - name: Wait for CodeBuild build to complete
+        run: |
+          echo "Waiting for CodeBuild build for commit: ${{ github.sha }}"
+
+          BUILD_ID=""
+          STATUS=""
+
+          # Loop until CodeBuild has a build for this commit
+          while [ -z "$BUILD_ID" ]; do
+            BUILD_ID=$(aws codebuild list-builds-for-project \
+              --project-name ${{ secrets.CODEBUILD_PROJECT }} \
+              --query 'ids[0]' --output text)
+
+            LATEST_SOURCE_VERSION=$(aws codebuild batch-get-builds \
+              --ids "$BUILD_ID" \
+              --query 'builds[0].sourceVersion' \
+              --output text)
+
+            if [ "$LATEST_SOURCE_VERSION" = "${{ github.sha }}" ]; then
+              echo "Found CodeBuild build: $BUILD_ID"
+            else
+              echo "Waiting for new CodeBuild build for this commit..."
+              BUILD_ID=""
+              sleep 5
+            fi
+          done
+
+          # Now wait until that build finishes
+          STATUS=$(aws codebuild batch-get-builds --ids "$BUILD_ID" --query 'builds[0].buildStatus' --output text)
+          echo "Current status: $STATUS"
+
+          while [ "$STATUS" = "IN_PROGRESS" ] || [ "$STATUS" = "QUEUED" ]; do
+            echo "Still building... ($STATUS)"
+            sleep 10
+            STATUS=$(aws codebuild batch-get-builds --ids "$BUILD_ID" --query 'builds[0].buildStatus' --output text)
+          done
+
+          if [ "$STATUS" != "SUCCEEDED" ]; then
+            echo "❌ CodeBuild failed with status: $STATUS"
+            exit 1
+          fi
+
+          echo "✅ CodeBuild build succeeded."
+
+      # 3️⃣ Deploy to EC2 after CodeBuild is done
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -20,6 +74,5 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/ai-blogs
-
             docker-compose -f docker-compose.ec2.yml pull
-            docker-compose -f docker-compose.ec2.yml up -d
+            docker-compose -f docker-compose.ec2.yml up -d --remove-orphans
