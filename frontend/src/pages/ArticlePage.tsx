@@ -64,13 +64,11 @@ export default function ArticlePage() {
 
   return (
     <div className="max-w-4xl mx-auto py-6 space-y-8">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-slate-100">My Blogs</h1>
 
         {isSignedIn && (
           <div className="flex gap-3">
-            {/* New Blog button */}
             <Link
               to="/myblogs/new"
               className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold shadow hover:bg-blue-500 transition"
@@ -78,10 +76,9 @@ export default function ArticlePage() {
               + New Blog
             </Link>
 
-            {/* Delete Selected */}
             <button
               onClick={deleteSelected}
-              className="px-4 py-2 rounded-lg bg-red-400 text-white text-sm font-semibold shadow hover:bg-red-500 transition"
+              className="px-4 py-2 rounded-lg text-red-600 text-sm font-semibold shadow hover:bg-red-500 hover:text-white transition"
             >
               Delete Selected
             </button>
@@ -126,7 +123,6 @@ export default function ArticlePage() {
                 </p>
               </div>
 
-              {/* Edit + Delete for own posts */}
               {isAuthor && (
                 <div className="flex flex-col text-sm gap-2">
                   <Link

@@ -62,7 +62,7 @@ export default function App() {
               }
             />
 
-            {/* Backward compatibility or internal usage */}
+            {/* Personal blog */}
             <Route path="/blogs/:id" element={<BlogView />} />
 
             {/* Fallback */}

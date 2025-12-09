@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import cookieParser from "cookie-parser";
 
 import { articlesRouter } from "./routes";
+import uploadRoutes  from "./routes/upload";
 import { setupArticleJob } from "./services";
 import { clerkMiddleware } from "@clerk/express";
 
@@ -74,6 +75,7 @@ app.use(clerkMiddleware());
 
 // Articles router: handles its own auth for public vs protected endpoints
 app.use("/api/articles", articlesRouter);
+app.use("/api",express.raw({ type: "*/*", limit: "20mb" }), uploadRoutes);
 
 // MongoDB Connection
 async function connectDB(): Promise<void> {

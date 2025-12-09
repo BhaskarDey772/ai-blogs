@@ -1,8 +1,10 @@
 import { createImageUpload } from "novel";
 import { toast } from "sonner";
 
+const API_BASE = import.meta.env.VITE_API_BASE; // e.g. http://localhost:4000/api
+
 const onUpload = (file: File) => {
-  const promise = fetch("/api/upload", {
+  const promise = fetch(`${API_BASE}/upload`, {
     method: "POST",
     headers: {
       "content-type": file?.type || "application/octet-stream",
@@ -14,22 +16,19 @@ const onUpload = (file: File) => {
   return new Promise((resolve, reject) => {
     toast.promise(
       promise.then(async (res) => {
-        // Successfully uploaded image
         if (res.status === 200) {
           const { url } = (await res.json()) as { url: string };
-          // preload the image
+
           const image = new Image();
           image.src = url;
           image.onload = () => {
             resolve(url);
           };
-          // No blob store configured
         } else if (res.status === 401) {
           resolve(file);
           throw new Error(
             "`BLOB_READ_WRITE_TOKEN` environment variable not found, reading image locally instead."
           );
-          // Unknown error
         } else {
           throw new Error("Error uploading image. Please try again.");
         }

@@ -8,6 +8,7 @@
     "dev": "nodemon --watch src --ext ts --exec \"ts-node src/index.ts\""
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.947.0",
     "@clerk/express": "^1.7.55",
     "@tiptap/core": "^3.13.0",
     "@tiptap/extension-document": "^3.13.0",
@@ -22,6 +23,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.0",
+    "multer": "^2.0.2",
     "node-cron": "^3.0.2",
     "resend": "^1.0.0"
   },

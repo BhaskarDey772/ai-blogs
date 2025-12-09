@@ -6,10 +6,8 @@ export default function AuthTokenSetter() {
   const { getToken } = useAuth();
 
   useEffect(() => {
-    // Register a token getter that the API client will call before each request
     setAuthTokenGetter(async () => {
       try {
-        // useAuth provides getToken which returns a token string
         if (!getToken) return null;
         const token = await getToken();
         return token ?? null;

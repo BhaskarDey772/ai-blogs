@@ -6,9 +6,6 @@ const runtimeEnv =
 const API_BASE =
   runtimeEnv?.VITE_API_BASE || import.meta.env.VITE_API_BASE || "/api";
 
-console.log("=== API Configuration Debug ===");
-console.log("Final API_BASE being used:", API_BASE);
-console.log("===============================");
 
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE,
@@ -18,7 +15,7 @@ const client: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-// Store the getToken function to be set by the app
+
 let getTokenFunction: (() => Promise<string | null>) | null = null;
 
 export const setAuthTokenGetter = (
@@ -27,12 +24,8 @@ export const setAuthTokenGetter = (
   getTokenFunction = getToken;
 };
 
-// Intercept requests to add Clerk token
 client.interceptors.request.use(
   async (config) => {
-    console.log("Making API request to:", (config.baseURL || "") + config.url);
-
-    // Add Clerk token if available
     if (getTokenFunction) {
       try {
         const token = await getTokenFunction();
@@ -56,7 +49,6 @@ client.interceptors.request.use(
   }
 );
 
-// Intercept responses to log errors
 client.interceptors.response.use(
   (response) => response,
   (error) => {

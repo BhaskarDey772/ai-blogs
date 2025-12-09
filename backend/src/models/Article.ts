@@ -23,16 +23,12 @@ const ArticleSchema = new Schema<IArticle>(
       required: true,
       trim: true,
     },
-    // The currently published content (Markdown). If the article is published,
-    // this should contain the public content.
     currentContent: {
       type: String,
     },
-    // The author's working draft content (may differ from currentContent until published)
     draftContent: {
       type: String,
     },
-    // Legacy: older documents may still have `content`; keep for compatibility
     content: {
       type: String,
     },
@@ -60,7 +56,6 @@ const ArticleSchema = new Schema<IArticle>(
   }
 );
 
-// Virtual id field and JSON/Obj transforms
 ArticleSchema.virtual("id").get(function (this: IArticle) {
   // @ts-ignore - _id exists on documents
   return this._id?.toString();
