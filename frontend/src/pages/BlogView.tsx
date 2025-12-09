@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { articleApi, Article } from "@/api/client";
 import { useUser } from "@clerk/clerk-react";
 import NovelEditor from "@/components/NovelEditor";
+import { toast } from "sonner";
 
 export default function BlogView() {
   const { id } = useParams<{ id: string }>();
@@ -17,9 +18,10 @@ export default function BlogView() {
       try {
         const data = await articleApi.getById(id);
         setArticle(data);
+        toast.success("Article loaded successfully");
       } catch (err) {
         console.error(err);
-        alert("Failed to load article");
+        toast.error("Failed to load article");
       } finally {
         setLoading(false);
       }

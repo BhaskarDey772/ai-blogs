@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { articleApi, Article } from "@/api/client";
 import { Link } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/clerk-react";
+import { toast } from "sonner";
 
 function extractText(json: any): string {
   if (!json) return "";
@@ -26,9 +27,10 @@ export default function ArticlePage() {
       try {
         const data = await articleApi.getAll();
         setArticles(data);
+        toast.success("Blogs loaded successfully");
       } catch (err) {
         console.error(err);
-        alert("Failed to load articles");
+        toast.error("Failed to load articles");
       } finally {
         setLoading(false);
       }
@@ -49,16 +51,17 @@ export default function ArticlePage() {
 
   const deleteSelected = async () => {
     const ids = Object.keys(selected).filter((id) => selected[id]);
-    if (!ids.length) return alert("No blogs selected");
+    if (!ids.length) return toast.error("No blogs selected");
     if (!confirm(`Delete ${ids.length} blogs?`)) return;
 
     try {
       await articleApi.bulkDelete(ids);
       setArticles((prev) => prev.filter((a) => !ids.includes(a.id)));
       setSelected({});
+      toast.success("Selected blogs deleted");
     } catch (err) {
       console.error(err);
-      alert("Failed to delete selected blogs");
+      toast.error("Failed to delete selected blogs");
     }
   };
 
@@ -141,9 +144,10 @@ export default function ArticlePage() {
                         setArticles((prev) =>
                           prev.filter((x) => x.id !== a.id)
                         );
+                        toast.success("Article deleted");
                       } catch (err) {
                         console.error(err);
-                        alert("Failed to delete article");
+                        toast.error("Failed to delete article");
                       }
                     }}
                     className="px-3 py-1 rounded-md text-red-400 border border-red-500 hover:bg-red-500/20 hover:text-red-300 transition font-medium"

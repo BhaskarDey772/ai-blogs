@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { articleApi, Article } from "@/api/client";
 import { useAuth } from "@clerk/clerk-react";
 import NovelEditor from "@/components/NovelEditor";
+import { toast } from "sonner";
 
 export default function PublicBlogView() {
   const { id } = useParams<{ id: string }>();
@@ -19,9 +20,10 @@ export default function PublicBlogView() {
         // Public fetch
         const a = await articleApi.getPublicById(id);
         setArticle(a);
+        toast.success("Blog loaded successfully");
       } catch (err) {
         console.error(err);
-        alert("Failed to load blog");
+        toast.error("Failed to load blog");
       } finally {
         setLoading(false);
       }

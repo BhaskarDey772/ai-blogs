@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { articleApi, Article } from "@/api/client";
 import NovelEditor from "@/components/NovelEditor";
+import { toast } from "sonner";
 
 function extractTitleFromContent(jsonString: string): string {
   try {
@@ -38,9 +39,10 @@ export default function BlogEdit() {
       try {
         const article = await articleApi.getById(id);
         setContent(article.content || "");
+        toast.success("Article loaded successfully");
       } catch (err) {
         console.error(err);
-        alert("Failed to load article");
+        toast.error("Failed to load article");
       } finally {
         setLoading(false);
       }
@@ -51,11 +53,11 @@ export default function BlogEdit() {
     status: "draft" | "published",
     freshContent: string
   ) => {
-    if (!freshContent) return alert("Content is empty");
+    if (!freshContent) return toast.error("Content is empty");
 
     const title = extractTitleFromContent(freshContent);
     if (!title || title === "Untitled")
-      return alert("Your article must contain at least one meaningful line.");
+      return toast.error("Your article must contain at least one meaningful line.");
 
     setSaving(true);
 
