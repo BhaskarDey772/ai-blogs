@@ -2,6 +2,7 @@
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -76,6 +77,20 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  --novel-black: #0a0a0a;
+  --novel-white: #ffffff;
+
+  --novel-stone-100: #f5f5f4;
+  --novel-stone-200: #e7e5e4;
+  --novel-stone-300: #d6d3d1;
+  --novel-stone-400: #a8a29e;
+  --novel-stone-500: #78716c;
+  --novel-stone-700: #44403c;
+  --novel-stone-800: #292524;
+  --novel-stone-900: #1c1917;
+
+  --border: #e7e5e4;
 }
 
 .dark {

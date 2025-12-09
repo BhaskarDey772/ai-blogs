@@ -176,7 +176,7 @@ const TailwindAdvancedEditor = ({
           initialContent={initialContent}
           editable={!readOnly}
           extensions={extensions as any}
-          className="relative min-h-[420px] w-full bg-dark dark:bg-slate-800 sm:rounded-lg sm:border sm:border-slate-100 dark:sm:border-slate-700 sm:shadow-card-lg"
+          className="relative min-h-[420px] w-full bg-slate-900 text-white sm:rounded-lg sm:border sm:border-slate-700 sm:shadow-card-lg"
           editorProps={{
             handleDOMEvents: {
               keydown: (_view, event) => handleCommandNavigation(event),
@@ -187,7 +187,7 @@ const TailwindAdvancedEditor = ({
               handleImageDrop(view, event, moved, uploadFn),
             attributes: {
               class:
-                "prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-3xl px-6 py-8 mx-auto",
+                "prose prose-invert prose-headings:text-white prose-p:text-slate-200 prose-strong:text-white max-w-3xl focus:outline-none px-6 py-8",
             },
           }}
           onUpdate={({ editor }) => {
