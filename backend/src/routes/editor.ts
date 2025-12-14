@@ -13,6 +13,7 @@ function draftKey(userId: string, articleId?: string) {
 // GET current draft from Redis (if any)
 router.get("/draft", authMiddleware, async (req: any, res) => {
   try {
+    console.log("get draft")
     const userId = req.user!.userId;
     const { articleId } = req.query;
     const key = draftKey(userId, articleId as string | undefined);
@@ -31,6 +32,7 @@ router.get("/draft", authMiddleware, async (req: any, res) => {
 // POST heartbeat - store transient draft in Redis
 router.post("/heartbeat", authMiddleware, async (req: any, res) => {
   try {
+    console.log("heartbeat")
     const userId = req.user!.userId;
     const { articleId, content, title } = req.body as {
       articleId?: string;
@@ -61,6 +63,7 @@ router.post("/heartbeat", authMiddleware, async (req: any, res) => {
 // POST stop - flush from Redis to DB (create or update)
 router.post("/stop", authMiddleware, async (req: any, res) => {
   try {
+    console.log("stop")
     const userId = req.user!.userId;
     const { articleId } = req.body as { articleId?: string };
     const key = draftKey(userId, articleId);
