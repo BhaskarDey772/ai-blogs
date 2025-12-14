@@ -21,19 +21,10 @@ export const authMiddleware = async (
     // Get auth state WITHOUT requiring auth (no redirect)
     const auth = getAuth(req as any);
 
-    console.log("[AUTH] Request headers:", {
-      authorization: req.headers.authorization,
-      cookie: req.headers.cookie?.substring(0, 100),
-    });
-    console.log("[AUTH] Clerk auth object:", auth);
-
     if (!auth || !auth.userId) {
-      console.log("[AUTH] No userId found, returning 401");
       res.status(401).json({ error: "Not authenticated" });
       return;
     }
-
-    console.log("[AUTH] User authenticated:", auth.userId);
 
     // Try to enrich with Clerk user data when possible
     try {

@@ -14,7 +14,7 @@ import {
   handleImageDrop,
   handleImagePaste,
 } from "novel";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { marked } from "marked";
 import { defaultExtensions } from "./extensions";
@@ -45,19 +45,24 @@ const HARD_CODED_INITIAL: JSONContent = {
     },
     {
       type: "paragraph",
-      content: [{ type: "text", text: "Start typing something…" }],
+      content: [{ type: "text", text: "Start typing something…/" }],
     },
   ],
 };
+
+import { editorApi } from "@/api/client";
+import extractTitleFromContent from "@/lib/titleExtractor";
 
 const TailwindAdvancedEditor = ({
   value,
   onChange,
   readOnly = false,
+  articleId,
 }: {
   value?: string;
   onChange?: (content: string) => void;
   readOnly?: boolean;
+  articleId?: string | undefined;
 }) => {
   const [initialContent, setInitialContent] = useState<JSONContent | null>(
     null
@@ -70,7 +75,6 @@ const TailwindAdvancedEditor = ({
   const [openLink, setOpenLink] = useState(false);
   const [openAI, setOpenAI] = useState(false);
 
-  // highlight code blocks
   const highlightCodeblocks = (content: string) => {
     const doc = new DOMParser().parseFromString(content, "text/html");
     doc.querySelectorAll("pre code").forEach((el) => {
@@ -80,80 +84,120 @@ const TailwindAdvancedEditor = ({
     return new XMLSerializer().serializeToString(doc);
   };
 
-  /** DEBOUNCED: console.log only */
   const debouncedUpdates = useDebouncedCallback((editor: EditorInstance) => {
     const json = editor.getJSON();
-    const html = highlightCodeblocks(editor.getHTML());
-    const markdown = editor.storage.markdown?.getMarkdown?.() ?? "";
-
-    // Save to localStorage
-    window.localStorage.setItem("novel-content", JSON.stringify(json));
-    window.localStorage.setItem("html-content", html);
-    window.localStorage.setItem("markdown", markdown);
-
     setCharsCount(editor.storage.characterCount.words());
     setSaveStatus("Saved");
 
-    // Pass updated Markdown to parent (BlogEdit)
     if (!readOnly) {
       onChange?.(JSON.stringify(json));
     }
   }, 400);
 
-  /** Instead of reading from localStorage, we set HARD-CODED content */
+  const latestDraftRef = useRef<string | null>(null);
+  const heartbeatTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
-    // 1️⃣ If parent provided a value → convert Markdown to JSON
-    if (value && value.trim().length > 0) {
-      try {
-        // Try parsing as JSON first (in case it's already in JSON format)
-        const json = JSON.parse(value);
-        console.log("Parsed initial content as JSON", json);
-        setInitialContent(json);
-        return;
-      } catch (err) {
-        // Not JSON, treat as Markdown
-        console.log("Converting Markdown to HTML...");
+    let mounted = true;
 
-        // Convert Markdown to HTML
-        const html = marked(value);
-        console.log("HTML output:", html);
+    async function resolveInitial() {
+      if (value && value.trim().length > 0) {
+        try {
+          const json = JSON.parse(value);
+          if (!mounted) return;
+          setInitialContent(json);
+          return;
+        } catch (err) {
+          const html = marked(value);
+          const editor = new Editor({
+            extensions: defaultExtensions as any,
+            content: html,
+          });
 
-        // Create temporary editor with HTML content
-        const editor = new Editor({
-          extensions: defaultExtensions as any,
-          content: html, // Now it's HTML, not Markdown!
-        });
-
-        const json = editor.getJSON();
-        console.log("Parsed initial content from Markdown", json);
-        editor.destroy();
-        setInitialContent(json);
-        return;
+          const json = editor.getJSON();
+          editor.destroy();
+          if (!mounted) return;
+          setInitialContent(json);
+          return;
+        }
       }
+
+      // No server value — try server-side draft if editing/creating
+      if (!readOnly) {
+        try {
+          const draft = await editorApi.getDraft(articleId);
+          if (draft && (draft.content || draft.title)) {
+            if (draft.content) {
+              try {
+                const parsed = JSON.parse(draft.content);
+                if (!mounted) return;
+                setInitialContent(parsed as JSONContent);
+                return;
+              } catch (e) {
+                // Not JSON — ignore
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to load draft from server", e);
+        }
+      }
+
+      // Fallback default
+      if (!mounted) return;
+      setInitialContent(HARD_CODED_INITIAL);
     }
 
-    // 2️⃣ Fallback to localStorage
-    const ls = window.localStorage.getItem("novel-content");
-    if (ls) {
-      try {
-        setInitialContent(JSON.parse(ls));
-        return;
-      } catch (err) {
-        console.error("Invalid JSON in localStorage");
-      }
-    }
+    resolveInitial();
 
-    // 3️⃣ Final fallback
-    setInitialContent({
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: [{ type: "text", text: "Start writing…" }],
-        },
-      ],
-    });
-  }, [value]);
+    return () => {
+      mounted = false;
+    };
+  }, [value, readOnly, articleId]);
+
+  // Heartbeat: send transient drafts to backend periodically
+  useEffect(() => {
+    if (readOnly) return;
+
+    const sendHeartbeat = async () => {
+      const content = latestDraftRef.current;
+      if (!content) return;
+      try {
+        const title = extractTitleFromContent(content);
+        await editorApi.heartbeat(articleId, content as string, title);
+        setSaveStatus("Saved (draft)");
+      } catch (e) {
+        setSaveStatus("Error saving draft");
+      }
+    };
+
+    // every 5s
+    heartbeatTimerRef.current = window.setInterval(sendHeartbeat, 5000);
+
+    // on unload/cleanup flush to DB
+    const handleStop = async () => {
+      try {
+        await editorApi.stop(articleId);
+      } catch (e) {
+        console.warn("Failed to flush draft on stop", e);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleStop);
+
+    return () => {
+      if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
+      window.removeEventListener("beforeunload", handleStop);
+      // flush once on unmount
+      (async () => {
+        try {
+          await editorApi.stop(articleId);
+        } catch (e) {
+          console.warn("Failed to flush draft on unmount", e);
+        }
+      })();
+    };
+  }, [readOnly, articleId]);
 
   if (!initialContent) return null;
 
@@ -194,7 +238,9 @@ const TailwindAdvancedEditor = ({
             setSaveStatus("Unsaved");
             debouncedUpdates(editor);
             const json = editor.getJSON();
-            onChange?.(JSON.stringify(json));
+            const asString = JSON.stringify(json);
+            latestDraftRef.current = asString;
+            onChange?.(asString);
           }}
           slotAfter={<ImageResizer />}
         >
@@ -225,7 +271,6 @@ const TailwindAdvancedEditor = ({
             </EditorCommandList>
           </EditorCommand>
 
-          {/* Top toolbar — hide interactive controls when readOnly */}
           {!readOnly && (
             <GenerativeMenuSwitch open={openAI} onOpenChange={setOpenAI}>
               <Separator orientation="vertical" />

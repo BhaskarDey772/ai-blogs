@@ -31,9 +31,7 @@ client.interceptors.request.use(
         const token = await getTokenFunction();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log("Added Clerk token to request");
         } else {
-          console.log("No Clerk token available");
         }
       } catch (error) {
         console.error("Error getting Clerk token:", error);
@@ -138,6 +136,23 @@ export const articleApi = {
 
   bulkDelete: async (ids: string[]): Promise<{ deleted: number }> => {
     const { data } = await client.post("/articles/bulk-delete", { ids });
+    return data;
+  },
+};
+
+export const editorApi = {
+  getDraft: async (articleId?: string) => {
+    const { data } = await client.get("/editor/draft", { params: { articleId } });
+    return data;
+  },
+
+  heartbeat: async (articleId: string | undefined, content: string, title?: string) => {
+    const { data } = await client.post("/editor/heartbeat", { articleId, content, title });
+    return data;
+  },
+
+  stop: async (articleId?: string) => {
+    const { data } = await client.post("/editor/stop", { articleId });
     return data;
   },
 };

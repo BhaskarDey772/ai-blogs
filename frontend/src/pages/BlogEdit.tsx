@@ -3,25 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { articleApi, Article } from "@/api/client";
 import NovelEditor from "@/components/NovelEditor";
 import { toast } from "sonner";
+import extractTitleFromContent from "@/lib/titleExtractor";
 
-function extractTitleFromContent(jsonString: string): string {
-  try {
-    const json = JSON.parse(jsonString);
-    if (!json?.content) return "Untitled";
 
-    for (const node of json.content) {
-      if (node.type === "heading" || node.type === "paragraph") {
-        const textNode = node.content?.find(
-          (n: any) => n.type === "text" && n.text?.trim()
-        );
-        if (textNode) return textNode.text.trim();
-      }
-    }
-    return "Untitled";
-  } catch {
-    return "Untitled";
-  }
-}
 
 export default function BlogEdit() {
   const { id } = useParams<{ id: string }>();
@@ -100,7 +84,7 @@ export default function BlogEdit() {
         </button>
       </div>
 
-      <NovelEditor value={content} onChange={setContent} readOnly={false} />
+      <NovelEditor value={content} onChange={setContent} readOnly={false} articleId={id} />
     </div>
   );
 }

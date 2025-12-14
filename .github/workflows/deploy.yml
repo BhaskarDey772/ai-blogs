@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1️⃣ Configure AWS for calling CodeBuild APIs
+      # 1 Configure AWS for calling CodeBuild APIs
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -20,7 +20,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 2️⃣ Wait for CodeBuild build that matches this commit
+      # 2 Wait for CodeBuild build that matches this commit
       - name: Wait for CodeBuild build to complete
         run: |
           echo "Waiting for CodeBuild build for commit: ${{ github.sha }}"
@@ -59,13 +59,13 @@ jobs:
           done
 
           if [ "$STATUS" != "SUCCEEDED" ]; then
-            echo "❌ CodeBuild failed with status: $STATUS"
+            echo "CodeBuild failed with status: $STATUS"
             exit 1
           fi
 
-          echo "✅ CodeBuild build succeeded."
+          echo "CodeBuild build succeeded."
 
-      # 3️⃣ Deploy to EC2 after CodeBuild is done
+      # 3 Deploy to EC2 after CodeBuild is done
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -73,6 +73,13 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
+            export AWS_REGION=${{ secrets.AWS_REGION }}
+            export AWS_ACCOUNT_ID=${{ secrets.AWS_ECR_ACCOUNT_ID }}
+
+            echo "Logging in to Amazon ECR..."
+            aws ecr get-login-password --region $AWS_REGION \
+              | docker login --username AWS --password-stdin \
+                $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
             cd /home/ubuntu/ai-blogs
             docker-compose -f docker-compose.ec2.yml pull
             docker-compose -f docker-compose.ec2.yml up -d --force-recreate

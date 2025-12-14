@@ -222,16 +222,38 @@ export class ArticleService {
   /* ---------------------------- AI GENERATE ---------------------------- */
 
   static async generateArticle(author?: { id?: string; name?: string }) {
+    // Build a meaningful, time-aware prompt that requests markdown output
+    const today = new Date().toISOString().slice(0, 10);
+    const prompt = `Produce a timely, well-structured markdown article (~700-1200 words) summarizing the most important recent technology updates as of ${today}. Cover key areas: AI/ML advances, major cloud provider announcements, developer tooling or frameworks updates, and an actionable takeaway for engineers or product builders. Start with a clear H1 title line ("# Title") followed by a 2-3 sentence summary, then 3-5 sections with headings and short paragraphs, and finish with a short conclusion and suggested further reading links (if any). Output only valid markdown.`;
+
     let content = "";
     try {
+      // dynamic require to avoid import side-effects when not available
       const { AIClient } = require("./aiClient");
-      content = await AIClient.generateContent("Generate a markdown article.");
-    } catch {
+      content = await AIClient.generateContent(prompt);
+    } catch (e) {
+      console.warn("[AI] generateArticle fallback due to AI client error:", e);
       content = fallbackGeneratedArticle().content;
     }
 
+    // Extract a sensible title from markdown: prefer first H1/H2, otherwise first non-empty line
+    function extractTitleFromMarkdown(md: string): string {
+      if (!md) return `Auto Article ${today}`;
+      const lines = md.split(/\r?\n/).map((l) => l.trim());
+      for (const line of lines) {
+        const m = line.match(/^#{1,6}\s+(.*)/);
+        if (m && m[1]) return m[1].trim();
+      }
+      // fallback: first non-empty line
+      const first = lines.find((l) => l.length > 0);
+      if (first) return first.length > 80 ? first.slice(0, 77) + "..." : first;
+      return `Auto Article ${today}`;
+    }
+
+    const title = extractTitleFromMarkdown(content) || `Auto Article ${today}`;
+
     const articleData: Partial<IArticle> = {
-      title: `Auto Article ${new Date().toISOString().slice(0, 10)}`,
+      title,
       content,
       status: "published",
       contentFormat: "markdown",

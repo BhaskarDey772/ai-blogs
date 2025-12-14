@@ -1,7 +1,6 @@
 // AI Client service - tries to use ai-sdk if available, otherwise falls back to OpenAI REST
 export class AIClient {
   static async generateContent(prompt: string): Promise<string> {
-    console.log("[AI] generateContent prompt:", prompt);
 
     // Try to load ai-sdk if installed
     try {
