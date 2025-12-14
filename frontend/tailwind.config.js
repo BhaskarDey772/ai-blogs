@@ -45,6 +45,7 @@ export default {
                     "Noto Sans",
                     "sans-serif",
                 ],
+                heading: ["Plus Jakarta Sans", "Inter"],
             },
             boxShadow: {
                 "card-lg": "0 10px 30px rgba(2,6,23,0.08)",

@@ -42,7 +42,7 @@ export default function PublicBlogs() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto py-6">
-      <h1 className="text-3xl font-bold text-white mb-4">Public Blogs</h1>
+      <h1 className="font-heading text-3xl font-bold text-white mb-4">Public Blogs</h1>
 
       <ul className="space-y-4">
         {articles.map((a) => (
