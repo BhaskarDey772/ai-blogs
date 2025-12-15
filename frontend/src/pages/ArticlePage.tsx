@@ -17,6 +17,9 @@ export default function ArticlePage() {
   const { user } = useUser();
 
   const [articles, setArticles] = useState<Article[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +29,14 @@ export default function ArticlePage() {
     (async () => {
       try {
         const data = await articleApi.getAll();
-        setArticles(data);
+        // If backend returns paginated shape for getAll later, adapt here.
+        if ((data as any).items) {
+          setArticles((data as any).items);
+          setTotal((data as any).total || 0);
+        } else {
+          setArticles(data as Article[]);
+        }
+
         toast.success("Blogs loaded successfully");
       } catch (err) {
         console.error(err);
@@ -160,6 +170,28 @@ export default function ArticlePage() {
           );
         })}
       </div>
+
+      {total > 0 && (
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-slate-400">Total: {total}</div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1 rounded bg-slate-800 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page * limit >= total}
+              className="px-3 py-1 rounded bg-slate-800 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

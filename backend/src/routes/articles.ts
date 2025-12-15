@@ -9,8 +9,16 @@ const router = Router();
 ------------------------------------------------------- */
 router.get("/public", async (req, res) => {
   try {
-    const articles = await ArticleService.getPublishedArticles();
-    return res.json(articles);
+    const page = parseInt((req.query.page as string) || "1", 10) || 1;
+    const limit = parseInt((req.query.limit as string) || "10", 10) || 10;
+
+    const result = await ArticleService.getPublishedArticles(page, limit);
+    return res.json({
+      items: result.items,
+      total: result.total,
+      page,
+      limit,
+    });
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch public articles" });
   }
@@ -59,8 +67,16 @@ router.get("/public/:id", async (req, res) => {
 router.get("/", optionalAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.userId;
-    const articles = await ArticleService.getMergedVisibleArticles(userId);
-    return res.json(articles);
+    const page = parseInt((req.query.page as string) || "1", 10) || 1;
+    const limit = parseInt((req.query.limit as string) || "10", 10) || 10;
+
+    const result = await ArticleService.getMergedVisibleArticles(
+      userId,
+      page,
+      limit
+    );
+
+    return res.json({ items: result.items, total: result.total, page, limit });
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch articles" });
   }

@@ -89,8 +89,11 @@ export const articleApi = {
     return data;
   },
 
-  getPublic: async (): Promise<Article[]> => {
-    const { data } = await client.get("/articles/public");
+  getPublic: async (page?: number, limit?: number): Promise<{ items: Article[]; total: number; page: number; limit: number }> => {
+    const params: any = {};
+    if (page) params.page = page;
+    if (limit) params.limit = limit;
+    const { data } = await client.get("/articles/public", { params });
     return data;
   },
 

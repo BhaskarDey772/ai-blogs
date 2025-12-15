@@ -4,6 +4,9 @@ import { Link } from "react-router-dom";
 
 export default function PublicBlogs() {
   const [articles, setArticles] = useState<Article[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   function extractText(json: any): string {
@@ -27,15 +30,16 @@ export default function PublicBlogs() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await articleApi.getPublic();
-        setArticles(data);
+        const data = await articleApi.getPublic(page, limit);
+        setArticles(data.items);
+        setTotal(data.total || 0);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [page, limit]);
 
   if (loading)
     return <div className="text-slate-300 py-10">Loading public blogs…</div>;
@@ -61,6 +65,27 @@ export default function PublicBlogs() {
           </li>
         ))}
       </ul>
+      <div className="flex items-center justify-between mt-4 text-sm text-slate-300">
+        <div>
+          Showing {articles.length} of {total} public blogs
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-1 rounded bg-slate-800 disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page * limit >= total}
+            className="px-3 py-1 rounded bg-slate-800 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

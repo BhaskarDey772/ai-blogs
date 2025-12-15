@@ -28,19 +28,31 @@ function validateArticleInput(title?: string, content?: string) {
 export class ArticleService {
   /* ---------------------------- PUBLIC ARTICLES ---------------------------- */
 
-  static async getPublishedArticles(): Promise<IArticle[]> {
-    const articles = await Article.find({
-      $or: [{ status: "published" }, { authorName: "AI Bot" }],
-    })
-      .select("-draftContent -content")
-      .sort({ publishedAt: -1, createdAt: -1 })
-      .exec();
+  static async getPublishedArticles(
+    page = 1,
+    limit = 10
+  ): Promise<{ items: IArticle[]; total: number }> {
+    const skip = (page - 1) * limit;
 
-    return articles.map((a) => {
+    const query = { $or: [{ status: "published" }, { authorName: "AI Bot" }] };
+
+    const [total, docs] = await Promise.all([
+      Article.countDocuments(query).exec(),
+      Article.find(query)
+        .select("-draftContent -content")
+        .sort({ publishedAt: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+    ]);
+
+    const items = docs.map((a) => {
       const obj = a.toObject() as any;
       obj.content = a.currentContent || "";
       return obj;
     });
+
+    return { items, total };
   }
 
   static async getArticlePublished(id: string): Promise<IArticle | null> {
@@ -61,24 +73,30 @@ export class ArticleService {
 
   /* ---------------------------- USER VISIBLE MERGED ---------------------------- */
 
-  static async getMergedVisibleArticles(userId?: string): Promise<IArticle[]> {
+  static async getMergedVisibleArticles(
+    userId?: string,
+    page = 1,
+    limit = 10
+  ): Promise<{ items: IArticle[]; total: number }> {
     // const publicArticles = await this.getPublishedArticles();
 
     // if (!userId) return publicArticles;
 
-    const own = await Article.find({
-      authorId: userId,
-    })
-      .sort({ createdAt: -1 })
-      .exec();
+    const filter = { authorId: userId };
+    const skip = (page - 1) * limit;
 
-    const ownMapped = own.map((a) => {
+    const [total, docs] = await Promise.all([
+      Article.countDocuments(filter).exec(),
+      Article.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
+    ]);
+
+    const items = docs.map((a) => {
       const obj = a.toObject() as any;
       obj.content = a.draftContent ?? a.currentContent ?? "";
       return obj;
     });
 
-    return ownMapped;
+    return { items, total };
   }
 
   /* ---------------------------- SINGLE ARTICLE LOGIC ---------------------------- */
