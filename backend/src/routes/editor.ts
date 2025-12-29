@@ -206,11 +206,13 @@ router.post("/heartbeat", authMiddleware, async (req: any, res) => {
 });
 
 // POST stop - flush from Redis to DB (manual stop)
+// skipCreate: if true, just clear the draft without creating a new article
+// This prevents duplicate articles when user already saved via button click
 router.post("/stop", authMiddleware, async (req: any, res) => {
   try {
     console.log("[EDITOR] POST /stop");
     const userId = req.user!.userId;
-    const { articleId } = req.body as { articleId?: string };
+    const { articleId, skipCreate } = req.body as { articleId?: string; skipCreate?: boolean };
 
     const key = draftKey(userId, articleId);
     const raw = await redis.get(key);
@@ -219,9 +221,14 @@ router.post("/stop", authMiddleware, async (req: any, res) => {
 
     const parsed = JSON.parse(raw) as { content?: string; title?: string };
 
-    // If articleId provided -> update, else create
-    let saved;
-    if (articleId) {
+    let saved = null;
+
+    // If skipCreate is true, just clear the draft without saving to DB
+    // This is used when user already created/saved the article via button click
+    if (skipCreate) {
+      console.log("[EDITOR] skipCreate=true, clearing draft without saving");
+    } else if (articleId) {
+      // If articleId provided -> update existing article
       saved = await ArticleService.updateArticle(
         articleId,
         {
@@ -234,7 +241,7 @@ router.post("/stop", authMiddleware, async (req: any, res) => {
       if (!saved)
         return res.status(404).json({ error: "Article not found" });
     } else {
-      // Create as draft
+      // Create as draft (only when skipCreate is false and no articleId)
       saved = await ArticleService.createArticle({
         title: parsed.title ?? `Auto Article ${new Date().toISOString()}`,
         content: parsed.content ?? "",

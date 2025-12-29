@@ -1,8 +1,32 @@
 import { Router } from "express";
 import { ArticleService } from "../services";
 import { authMiddleware, AuthRequest, optionalAuth } from "../middleware/auth";
+import redis from "../services/redisClient";
 
 const router = Router();
+
+// Redis key helpers (matching editor.ts)
+const DRAFT_KEY_PREFIX = "editor:draft";
+const HEARTBEAT_KEY_PREFIX = "editor:heartbeat";
+
+function draftKey(userId: string, articleId?: string) {
+  return `${DRAFT_KEY_PREFIX}:${userId}:${articleId ?? "new"}`;
+}
+
+function heartbeatKey(userId: string) {
+  return `${HEARTBEAT_KEY_PREFIX}:${userId}`;
+}
+
+// Helper to clear user's draft from Redis (prevents duplicate article creation)
+async function clearUserDraft(userId: string, articleId?: string) {
+  try {
+    await redis.del(draftKey(userId, articleId));
+    await redis.del(heartbeatKey(userId));
+    console.log(`[ARTICLES] Cleared Redis draft for user ${userId}, articleId: ${articleId ?? "new"}`);
+  } catch (err) {
+    console.error("[ARTICLES] Failed to clear Redis draft:", err);
+  }
+}
 
 /* -------------------------------------------------------
    PUBLIC: Fetch published articles
@@ -88,15 +112,19 @@ router.get("/", optionalAuth, async (req: AuthRequest, res) => {
 router.post("/", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { title, content, status, contentFormat } = req.body;
+    const userId = req.user!.userId;
 
     const article = await ArticleService.createArticle({
       title,
       content,
       status: status || "draft",
       contentFormat: contentFormat || "novel",
-      authorId: req.user!.userId,
+      authorId: userId,
       authorName: req.user!.firstName,
     });
+
+    // Clear Redis draft to prevent /stop from creating a duplicate
+    await clearUserDraft(userId);
 
     return res.status(201).json(article);
   } catch (err: any) {
@@ -111,13 +139,20 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
 ------------------------------------------------------- */
 router.put("/:id", authMiddleware, async (req: AuthRequest, res) => {
   try {
+    const userId = req.user!.userId;
+    const articleId = req.params.id;
+
     const updated = await ArticleService.updateArticle(
-      req.params.id,
+      articleId,
       req.body,
-      req.user!.userId
+      userId
     );
 
     if (!updated) return res.status(404).json({ error: "Not found" });
+
+    // Clear Redis draft to prevent /stop from duplicating the update
+    await clearUserDraft(userId, articleId);
+
     return res.json(updated);
   } catch (err: any) {
     return res

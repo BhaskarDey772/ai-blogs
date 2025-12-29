@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 
 import { articlesRouter, editorRouter } from "./routes";
 import uploadRoutes  from "./routes/upload";
-import { setupArticleJob } from "./services";
+// import { setupArticleJob } from "./services"; // Disabled to save AI tokens
 import { clerkMiddleware } from "@clerk/express";
 
 const app: Express = express();
@@ -92,7 +92,7 @@ async function connectDB(): Promise<void> {
 async function startServer(): Promise<void> {
   try {
     await connectDB();
-    setupArticleJob();
+    // setupArticleJob(); // Disabled to save AI tokens
 
     app.listen(PORT, () => {
       console.log(`[SERVER] Backend listening on port ${PORT}`);

@@ -1,4 +1,5 @@
 import { Article, IArticle } from "../models";
+import redis from "./redisClient";
 
 /* ------------------------------------------------------------------
    Utilities
@@ -8,6 +9,10 @@ interface GenerateArticleData {
   title: string;
   content: string;
 }
+
+const CACHE_TTL = 3600; // 1 hour in seconds
+const PUBLISHED_CACHE_KEY = "articles:published";
+const MERGED_CACHE_KEY = "articles:merged";
 
 function fallbackGeneratedArticle(): GenerateArticleData {
   return {
@@ -26,12 +31,58 @@ function validateArticleInput(title?: string, content?: string) {
    ArticleService Class
 ------------------------------------------------------------------ */
 export class ArticleService {
+  /* ----------------------- CACHE HELPERS ----------------------- */
+
+  private static getCacheKey(prefix: string, page: number, limit: number, userId?: string): string {
+    if (userId) {
+      return `${prefix}:user:${userId}:page:${page}:limit:${limit}`;
+    }
+    return `${prefix}:page:${page}:limit:${limit}`;
+  }
+
+  private static async invalidateCache(patterns: string[]): Promise<void> {
+    try {
+      for (const pattern of patterns) {
+        const keys = await redis.keys(`${pattern}:*`);
+        if (keys.length > 0) {
+          await redis.del(keys);
+        }
+      }
+    } catch (err) {
+      console.warn("[CACHE] Error invalidating cache:", err);
+    }
+  }
+
+  private static async getFromCache<T>(key: string): Promise<T | null> {
+    try {
+      const cached = await redis.get(key);
+      return cached ? JSON.parse(cached) : null;
+    } catch (err) {
+      console.warn("[CACHE] Error reading from cache:", err);
+      return null;
+    }
+  }
+
+  private static async setCache<T>(key: string, value: T, ttl: number = CACHE_TTL): Promise<void> {
+    try {
+      await redis.setEx(key, ttl, JSON.stringify(value));
+    } catch (err) {
+      console.warn("[CACHE] Error writing to cache:", err);
+    }
+  }
+
   /* ---------------------------- PUBLIC ARTICLES ---------------------------- */
 
   static async getPublishedArticles(
     page = 1,
     limit = 10
   ): Promise<{ items: IArticle[]; total: number }> {
+    const cacheKey = this.getCacheKey(PUBLISHED_CACHE_KEY, page, limit);
+
+    // Try to get from cache
+    const cached = await this.getFromCache<{ items: IArticle[]; total: number }>(cacheKey);
+    if (cached) return cached;
+
     const skip = (page - 1) * limit;
 
     const query = { $or: [{ status: "published" }, { authorName: "AI Bot" }] };
@@ -52,7 +103,12 @@ export class ArticleService {
       return obj;
     });
 
-    return { items, total };
+    const result = { items, total };
+
+    // Store in cache
+    await this.setCache(cacheKey, result);
+
+    return result;
   }
 
   static async getArticlePublished(id: string): Promise<IArticle | null> {
@@ -78,9 +134,13 @@ export class ArticleService {
     page = 1,
     limit = 10
   ): Promise<{ items: IArticle[]; total: number }> {
-    // const publicArticles = await this.getPublishedArticles();
-
-    // if (!userId) return publicArticles;
+    // Try to get from cache (when userId is provided)
+    let cacheKey = "";
+    if (userId) {
+      cacheKey = this.getCacheKey(MERGED_CACHE_KEY, page, limit, userId);
+      const cached = await this.getFromCache<{ items: IArticle[]; total: number }>(cacheKey);
+      if (cached) return cached;
+    }
 
     const filter = { authorId: userId };
     const skip = (page - 1) * limit;
@@ -96,7 +156,14 @@ export class ArticleService {
       return obj;
     });
 
-    return { items, total };
+    const result = { items, total };
+
+    // Store in cache only when userId is provided
+    if (userId) {
+      await this.setCache(cacheKey, result);
+    }
+
+    return result;
   }
 
   /* ---------------------------- SINGLE ARTICLE LOGIC ---------------------------- */
@@ -147,6 +214,9 @@ export class ArticleService {
     const article = new Article(payload);
     await article.save();
 
+    // Invalidate cache when creating new article
+    await this.invalidateCache([PUBLISHED_CACHE_KEY, MERGED_CACHE_KEY]);
+
     const obj = article.toObject() as any;
     obj.content = article.draftContent;
     return obj;
@@ -185,6 +255,9 @@ export class ArticleService {
 
       await article.save();
 
+      // Invalidate cache when publishing
+      await this.invalidateCache([PUBLISHED_CACHE_KEY, MERGED_CACHE_KEY]);
+
       const obj = article.toObject() as any;
       obj.content = publishContent;
       return obj;
@@ -204,6 +277,9 @@ export class ArticleService {
 
     await article.save();
 
+    // Invalidate cache when updating
+    await this.invalidateCache([MERGED_CACHE_KEY]);
+
     const obj = article.toObject() as any;
     obj.content = article.draftContent;
     return obj;
@@ -222,6 +298,10 @@ export class ArticleService {
       throw new Error("Not authorized to delete this article");
 
     await Article.findByIdAndDelete(id).exec();
+
+    // Invalidate cache when deleting
+    await this.invalidateCache([PUBLISHED_CACHE_KEY, MERGED_CACHE_KEY]);
+
     return true;
   }
 
@@ -234,6 +314,10 @@ export class ArticleService {
     }
 
     const result = await Article.deleteMany({ _id: { $in: ids } }).exec();
+
+    // Invalidate cache when deleting multiple
+    await this.invalidateCache([PUBLISHED_CACHE_KEY, MERGED_CACHE_KEY]);
+
     return { deleted: result.deletedCount ?? 0 };
   }
 
